@@ -294,6 +294,7 @@ public class EmpleadosControlador {
 
         return ResponseEntity.notFound().build();
     }
+   
     
 }
 

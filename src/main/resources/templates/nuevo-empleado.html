@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Nuevo empleado</title>
+
+    <!-- Bootstrap proporciona los estilos y componentes visuales. -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+    <div class="container mt-5">
+
+        <div class="card shadow">
+
+            <div class="card-header">
+                <h2 class="mb-0">Nuevo empleado</h2>
+            </div>
+
+            <div class="card-body">
+
+
+                <!--
+                 * Mensaje mostrado después de crear correctamente
+                 * el empleado.
+                 *
+                 * d-none lo mantiene oculto inicialmente.
+                 -->
+                <div id="mensajeExito"
+                     class="alert alert-success d-none"
+                     role="alert">
+
+                    <h5 class="alert-heading">
+                        Empleado añadido correctamente.
+                    </h5>
+
+                    <p>
+                        El empleado se ha añadido a la lista.
+                    </p>
+
+                    <button type="button"
+                            class="btn btn-primary"
+                            onclick="crearOtro()">
+                        Crear otro
+                    </button>
+
+                    <a href="/web/empleados"
+                       class="btn btn-success">
+                        Ver empleados
+                    </a>
+
+                </div>
+
+
+                <form id="formEmpleado">
+
+                    <div class="mb-3">
+
+                        <label for="id" class="form-label">
+                            ID
+                        </label>
+
+                        <input type="number"
+                               id="id"
+                               class="form-control"
+                               required>
+
+                    </div>
+
+
+                    <div class="mb-3">
+
+                        <label for="nombre" class="form-label">
+                            Nombre
+                        </label>
+
+                        <input type="text"
+                               id="nombre"
+                               class="form-control"
+                               required>
+
+                    </div>
+
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        Crear empleado
+                    </button>
+
+                    <a href="/web/empleados"
+                       class="btn btn-secondary">
+                        Cancelar
+                    </a>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        /*
+         * Detecta el envío del formulario.
+         *
+         * El formulario HTML normalmente intentaría enviar los datos
+         * directamente al servidor y recargar la página.
+         *
+         * event.preventDefault() evita ese comportamiento.
+         * De esta forma podemos realizar nosotros la petición mediante
+         * fetch().
+         */
+        document
+            .getElementById("formEmpleado")
+            .addEventListener("submit", function(event) {
+
+                event.preventDefault();
+
+
+                /*
+                 * Construimos un objeto JavaScript con los datos
+                 * introducidos por el usuario.
+                 *
+                 * document.getElementById()
+                 *     → obtiene un elemento HTML.
+                 *
+                 * .value
+                 *     → obtiene el valor introducido.
+                 *
+                 * Number()
+                 *     → convierte el ID de texto a número.
+                 */
+                const empleado = {
+
+                    id: Number(
+                        document.getElementById("id").value
+                    ),
+
+                    nombre:
+                        document.getElementById("nombre").value
+
+                };
+
+
+                /*
+                 * fetch() permite realizar desde JavaScript
+                 * una petición HTTP.
+                 *
+                 * En este caso:
+                 *
+                 * POST /empleados
+                 */
+                fetch("/empleados", {
+
+                    method: "POST",
+
+                    /*
+                     * Indicamos que el cuerpo de la petición
+                     * contiene datos en formato JSON.
+                     */
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    /*
+                     * JSON.stringify() convierte el objeto JavaScript
+                     * en una cadena JSON que se envía al servidor.
+                     *
+                     * Ejemplo:
+                     *
+                     * {
+                     *     "id": 6,
+                     *     "nombre": "Pedro"
+                     * }
+                     */
+                    body: JSON.stringify(empleado)
+
+                })
+
+
+                /*
+                 * then() recibe la respuesta HTTP de Spring Boot.
+                 */
+                .then(response => {
+
+                    /*
+                     * response.ok es true cuando el código HTTP
+                     * está dentro del rango 200-299.
+                     *
+                     * En nuestro caso esperamos:
+                     *
+                     * 201 CREATED
+                     */
+                    if (!response.ok) {
+                        throw new Error(
+                            "Error al crear el empleado"
+                        );
+                    }
+
+                    /*
+                     * El POST devuelve el EmpleadoDTO creado
+                     * en formato JSON.
+                     *
+                     * response.json() convierte ese JSON en
+                     * un objeto JavaScript.
+                     */
+                    return response.json();
+
+                })
+
+
+                /*
+                 * La respuesta JSON no necesitamos utilizarla
+                 * en este momento.
+                 *
+                 * Solo necesitamos saber que la creación
+                 * se ha realizado correctamente.
+                 */
+                .then(() => {
+
+                    /*
+                     * Oculta el formulario.
+                     */
+                    document
+                        .getElementById("formEmpleado")
+                        .classList.add("d-none");
+
+                    /*
+                     * Muestra el mensaje de confirmación.
+                     */
+                    document
+                        .getElementById("mensajeExito")
+                        .classList.remove("d-none");
+
+                })
+
+
+                /*
+                 * Captura los errores producidos durante la petición.
+                 */
+                .catch(error => {
+
+                    console.error(error);
+
+                });
+
+            });
+
+
+        /*
+         * Permite volver a utilizar el formulario para crear
+         * otro empleado.
+         */
+        function crearOtro() {
+
+            /*
+             * Borra los valores introducidos anteriormente.
+             */
+            document
+                .getElementById("formEmpleado")
+                .reset();
+
+            /*
+             * Oculta el mensaje de éxito.
+             */
+            document
+                .getElementById("mensajeExito")
+                .classList.add("d-none");
+
+            /*
+             * Vuelve a mostrar el formulario.
+             */
+            document
+                .getElementById("formEmpleado")
+                .classList.remove("d-none");
+        }
+
+    </script>
+
+</body>
+
+</html>

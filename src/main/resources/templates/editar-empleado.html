@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Editar empleado</title>
+
+    <!-- Bootstrap -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet">
+
+</head>
+
+<body class="bg-light">
+
+    <div class="container mt-5">
+
+        <div class="card shadow">
+
+            <div class="card-header">
+                <h2 class="mb-0">Editar empleado</h2>
+            </div>
+
+            <div class="card-body">
+
+                <form id="formEditarEmpleado">
+
+                    <div class="mb-3">
+
+                        <label for="id" class="form-label">
+                            ID
+                        </label>
+
+                        <input
+                            type="number"
+                            id="id"
+                            class="form-control"
+                            th:value="${empleado.id}"
+                            readonly>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label for="nombre" class="form-label">
+                            Nombre
+                        </label>
+
+                        <input
+                            type="text"
+                            id="nombre"
+                            class="form-control"
+                            th:value="${empleado.nombre}"
+                            required>
+
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Guardar cambios
+                    </button>
+
+                    <a href="/web/empleados" class="btn btn-secondary">
+                        Cancelar
+                    </a>
+
+                </form>
+
+
+                <!-- Mensaje mostrado después de modificar correctamente -->
+                <div
+                    id="mensajeExito"
+                    class="alert alert-success d-none mt-3">
+
+                    <h5 class="alert-heading">
+                        Empleado modificado correctamente.
+                    </h5>
+
+                    <p class="mb-0">
+                        Los datos del empleado han sido actualizados.
+                    </p>
+
+                    <a
+                        href="/web/empleados"
+                        class="btn btn-success mt-3">
+                        Ver empleados
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        // Envía el empleado modificado al endpoint REST mediante PUT.
+        document
+            .getElementById("formEditarEmpleado")
+            .addEventListener("submit", function(event) {
+
+                // Evita el envío tradicional del formulario.
+                event.preventDefault();
+
+                // Obtiene el ID del empleado.
+                const id = Number(
+                    document.getElementById("id").value
+                );
+
+                // Construye el objeto que se enviará como JSON.
+                const empleado = {
+                    id: id,
+                    nombre: document.getElementById("nombre").value
+                };
+
+                fetch("/empleados/" + id, {
+
+                    method: "PUT",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify(empleado)
+
+                })
+                .then(response => {
+
+                    // Si la respuesta HTTP no es correcta,
+                    // se genera un error.
+                    if (!response.ok) {
+                        throw new Error(
+                            "Error al modificar el empleado"
+                        );
+                    }
+
+                    return response.json();
+
+                })
+                .then(() => {
+
+                    // Oculta el formulario después de modificar.
+                    document
+                        .getElementById("formEditarEmpleado")
+                        .classList.add("d-none");
+
+                    // Muestra el mensaje de confirmación.
+                    document
+                        .getElementById("mensajeExito")
+                        .classList.remove("d-none");
+
+                })
+                .catch(error => {
+
+                    console.error(error);
+
+                });
+
+            });
+
+    </script>
+
+</body>
+
+</html>

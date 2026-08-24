@@ -17,7 +17,9 @@ Ejemplos sencillos de conceptos y anotaciones de Spring:
 
 ## 2. restbasico
 
-Ejemplo de API REST con un CRUD básico de empleados.
+Ejemplo de API REST con un CRUD básico de empleados y una interfaz web con **Thymeleaf + Bootstrap**.
+
+### API REST
 
 | Método | Endpoint | Operación |
 |---|---|---|
@@ -29,6 +31,19 @@ Ejemplo de API REST con un CRUD básico de empleados.
 
 Los datos se almacenan actualmente en memoria mediante `ArrayList`.
 
-## Próximo paso
+### Interfaz web
 
-Añadir una interfaz web sencilla con **Thymeleaf**.
+| Método | Endpoint | Operación |
+|---|---|---|
+| GET | `/web/empleados` | Mostrar lista |
+| GET | `/web/empleados/nuevo` | Formulario de alta |
+| GET | `/web/empleados/editar/{id}` | Formulario de edición |
+
+La interfaz utiliza:
+
+- Thymeleaf
+- Bootstrap
+- JavaScript `fetch()`
+- Formularios para crear y modificar
+- Botones para editar y eliminar
+- Modal de confirmación para eliminar
