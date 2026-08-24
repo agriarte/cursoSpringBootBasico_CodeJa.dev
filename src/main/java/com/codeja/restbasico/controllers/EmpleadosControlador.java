@@ -1,8 +1,6 @@
 package com.codeja.restbasico.controllers;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,46 +14,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.codeja.restbasico.dto.EmpleadoDTO;
+import com.codeja.restbasico.services.EmpleadosService;
 
 
-
-/*
- * 
- * En los ejemplos básicos devolvíamos directamente objetos y listas. Ahora 
- * damos un paso más y utilizamos ResponseEntity para controlar de forma 
- * explícita la respuesta HTTP.
- * ResponseEntity es una clase de Spring que representa la respuesta HTTP
- * completa: cuerpo, encabezados y código de estado.
- *
- * Utilizar ResponseEntity permite tener un mayor control sobre lo que
- * nuestra API REST devuelve al cliente.
- *
- * En situaciones simples, podemos devolver directamente un objeto o una
- * lista y Spring los convertirá automáticamente a JSON.
- *
- * Sin embargo, ResponseEntity es útil cuando necesitamos:
- *
- * - Personalizar el código de estado HTTP (200, 404, 500, etc.).
- * - Añadir encabezados HTTP.
- * - Devolver un cuerpo vacío o diferente según la lógica de la aplicación.
- */
-
-/*
- * @RequestMapping("/empleados") define una ruta base común
- * para todos los endpoints de este controlador.
- *
- * Por tanto:
- *
- * @GetMapping("/test")
- *     → GET /empleados/test
- *
- * @GetMapping("/lista")
- *     → GET /empleados/lista
- *
- *
- * Al utilizar @RestController, los objetos devueltos por los métodos
- * se convierten automáticamente a JSON.
- */
 @RestController
 @RequestMapping("/empleados")
 public class EmpleadosControlador {
@@ -72,40 +33,12 @@ public class EmpleadosControlador {
 	// --------------------------------------------------------	
 	
 
- // Lista utilizada como fuente de datos para este ejemplo.
-    //
-    // List.of() crea una lista no modificable.
-    //
-    // new ArrayList<>(Collection) crea una NUEVA lista ArrayList
-    // copiando los elementos de la Collection recibida.
-    // La nueva lista sí es modificable, aunque la lista original
-    // creada con List.of() no lo sea.
-    //
-    // Por tanto:
-    //
-    // List.of(...)
-    //         → lista no modificable
-    //
-    // new ArrayList<>(List.of(...))
-    //         → nueva lista modificable
-    //
-    // final evita que la referencia "empleados" pueda apuntar
-    // posteriormente a otra lista. No impide modificar el contenido
-    // de la ArrayList.
-    //
-    // Ejemplo:
-    // empleados.add(...)       → permitido
-    // empleados = otraLista    → no permitido
-    //
-    private final List<EmpleadoDTO> empleados = new ArrayList<>(
-            List.of(
-            new EmpleadoDTO(1, "Juan"),
-            new EmpleadoDTO(2, "Maria"),
-            new EmpleadoDTO(3, "José"),
-            new EmpleadoDTO(4, "Ricardo"),
-            new EmpleadoDTO(5, "Noemí")
-            )
-    );
+
+    private final EmpleadosService empleadosService;
+
+    public EmpleadosControlador(EmpleadosService empleadosService) {
+        this.empleadosService = empleadosService;
+    }
     
     
     
@@ -116,6 +49,9 @@ public class EmpleadosControlador {
     //
     // Devuelve la lista completa de empleados.
     //
+    // La lista es obtenida mediante EmpleadosService.
+    // El controlador no accede directamente a la colección.
+    //
     // No necesita Stream ni Optional:
     // - No estamos filtrando ni transformando los elementos.
     // - La lista existe aunque esté vacía.
@@ -125,166 +61,50 @@ public class EmpleadosControlador {
     // en un array JSON.
     @GetMapping
     public List<EmpleadoDTO> getLista() {
-        return empleados;
+        return empleadosService.getEmpleados();
     }
     
     
-    
-
     /*
      * ============================================================
-     * Obtener un elemento concreto
-     * VERSIÓN 1: for-each + ResponseEntity
+     * Obtener un empleado concreto
      * ============================================================
      *
      * La ruta completa será:
-     * /empleados/{idEmpleado}
+     * GET /empleados/{idEmpleado}
      *
      * @PathVariable recoge el valor de {idEmpleado} de la URL.
      * Ejemplo:
-     * /empleados/3
+     * GET /empleados/3
      *
-     * El for-each recorre la lista y busca un empleado cuyo
-     * ID coincida con el ID recibido.
+     * El controlador delega la búsqueda en EmpleadosService.
      *
-     * Si lo encuentra:
-     *     → devuelve HTTP 200 OK con el EmpleadoDTO.
+     * El Service devuelve un Optional<EmpleadoDTO> porque el
+     * empleado puede existir o no.
      *
-     * Si no lo encuentra:
-     *     → devuelve HTTP 404 NOT FOUND.
+     * Si el Optional contiene un empleado:
+     *     → map() lo transforma en ResponseEntity<EmpleadoDTO>.
+     *     → devuelve HTTP 200 OK con el empleado.
      *
-     * Esta versión no utiliza Optional.
+     * Si el Optional está vacío:
+     *     → orElseGet() devuelve HTTP 404 NOT FOUND.
      *
-     *
-     * @GetMapping("/{idEmpleado}")
-     * public ResponseEntity<EmpleadoDTO> empleadoByID(@PathVariable long idEmpleado) {
-     *
-     *     for (EmpleadoDTO empleadoDTO : empleados) {
-     *         if (empleadoDTO.id() == idEmpleado) {
-     *             return ResponseEntity.ok(empleadoDTO);
-     *         }
-     *     }
-     *
-     *     return ResponseEntity.notFound().build();
-     * }
-     *
-     *
-     * ============================================================
-     * VERSIÓN 2: Stream + Optional
-     * ============================================================
-     *
-     * Stream permite expresar la búsqueda de forma más funcional.
-     *
-     * stream()
-     *     → crea un Stream a partir de la lista.
-     *
-     * filter()
-     *     → conserva únicamente los empleados cuyo ID coincide.
-     *
-     * findFirst()
-     *     → obtiene el primer empleado encontrado.
-     *     → devuelve un Optional<EmpleadoDTO>.
-     *
-     * orElse(null)
-     *     → obtiene el EmpleadoDTO del Optional.
-     *     → si el Optional está vacío, devuelve null.
-     *
-     * Esta versión es más sencilla, pero no permite expresar
-     * explícitamente un HTTP 404 mediante ResponseEntity.
-     *
-     *
-     * @GetMapping("/{idEmpleado}")
-     * public EmpleadoDTO empleadoByID(@PathVariable long idEmpleado) {
-     *
-     *     return empleados.stream()
-     *             .filter(e -> e.id() == idEmpleado)
-     *             .findFirst()
-     *             .orElse(null);
-     * }
-     *
-     *
-     * ============================================================
-     * VERSIÓN 3: Stream + Optional + ResponseEntity
-     * ============================================================
-     *
-     * Esta versión permite controlar explícitamente los dos
-     * posibles resultados de la petición HTTP:
-     *
-     *     Empleado encontrado
-     *         → HTTP 200 OK + EmpleadoDTO
-     *
-     *     Empleado no encontrado
-     *         → HTTP 404 NOT FOUND
-     *
-     *
-     * El Optional aparece como resultado intermedio de findFirst().
-     * No es el tipo que finalmente devuelve el método.
-     *
-     *
-     * stream()
-     *     ↓
-     * Stream<EmpleadoDTO>
-     *
-     * filter()
-     *     ↓
-     * Stream<EmpleadoDTO>
-     *
-     * findFirst()
-     *     ↓
-     * Optional<EmpleadoDTO>
-     *
-     * map(ResponseEntity::ok)
-     *     ↓
-     * Optional<ResponseEntity<EmpleadoDTO>>
-     *
-     * orElseGet(...)
-     *     ↓
-     * ResponseEntity<EmpleadoDTO>
-     *
-     * Por tanto, el tipo final coincide con el tipo declarado
-     * en el método:
+     * El Optional se utiliza como resultado intermedio.
+     * El tipo que finalmente devuelve el método es:
      *
      * ResponseEntity<EmpleadoDTO>
-     *
      */
-
-    // Versión utilizando Stream, Optional y ResponseEntity.
-    //
-    // Permite devolver:
-    //         → HTTP 200 OK si se encuentra el empleado.
-    //         → HTTP 404 NOT FOUND si no se encuentra.
-
+    
     @GetMapping("/{idEmpleado}")
-    public ResponseEntity<EmpleadoDTO> empleadoByID(@PathVariable long idEmpleado) {
+    public ResponseEntity<EmpleadoDTO> empleadoByID(
+            @PathVariable long idEmpleado) {
 
-        // stream() crea un Stream a partir de la lista.
-        return empleados.stream()
+        return empleadosService.getEmpleadoById(idEmpleado)
 
-                // filter() conserva únicamente los empleados cuyo ID
-                // coincide con el ID recibido en la URL.
-                .filter(e -> e.id() == idEmpleado)
-
-                // findFirst() obtiene el primer empleado que ha pasado
-                // el filtro.
-                //
-                // Devuelve un Optional<EmpleadoDTO>.
-                .findFirst()
-
-                // Si existe un empleado, map() transforma:
-                //
-                // EmpleadoDTO
-                //     ↓
-                // ResponseEntity<EmpleadoDTO>
-                //
-                // El resultado sigue estando dentro de un Optional:
-                //
-                // Optional<ResponseEntity<EmpleadoDTO>>
+                // Si existe el empleado, devuelve HTTP 200 OK.
                 .map(ResponseEntity::ok)
 
-                // Si el Optional está vacío, significa que no se encontró
-                // ningún empleado.
-                //
-                // En ese caso se devuelve HTTP 404 NOT FOUND sin cuerpo.
+                // Si no existe, devuelve HTTP 404 NOT FOUND.
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
     
@@ -313,7 +133,8 @@ public class EmpleadosControlador {
      *     "nombre": "Pedro"
      * }
      *
-     * El empleado recibido se añade a la lista mediante add().
+     * El controlador delega la creación del empleado en
+     * EmpleadosService.
      *
      * ResponseEntity permite indicar explícitamente el estado
      * HTTP de la respuesta.
@@ -323,11 +144,10 @@ public class EmpleadosControlador {
      *
      * El EmpleadoDTO creado se devuelve en el cuerpo de la
      * respuesta y Spring lo convierte automáticamente a JSON.
-     * 
-     * 
-     * NOTA: aunque también funcionaría si el return solo devolviera
-     * ResponseEntity.ok(empleado), no sería lo más apropiado porque
-     * devolvería el código HTTP 200 OK.
+     *
+     * NOTA: aunque también funcionaría devolver directamente
+     * ResponseEntity.ok(empleado), no sería lo más apropiado
+     * porque devolvería HTTP 200 OK.
      *
      * Cuando una petición crea correctamente un nuevo recurso,
      * el código HTTP adecuado es 201 CREATED.
@@ -336,13 +156,15 @@ public class EmpleadosControlador {
     public ResponseEntity<EmpleadoDTO> crearEmpleado(
             @RequestBody EmpleadoDTO empleado) {
 
-        empleados.add(empleado);
+        empleadosService.crearEmpleado(empleado);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(empleado);
     }
-
+    
+    
+    
     /*
      * ============================================================
      * Eliminar un empleado
@@ -354,6 +176,10 @@ public class EmpleadosControlador {
      * @PathVariable recoge el valor de {idEmpleado} de la URL.
      * Ejemplo:
      * DELETE /empleados/3
+     *
+     * El controlador delega la eliminación en EmpleadosService.
+     *
+     * En el Service se utiliza removeIf().
      *
      * removeIf() pertenece a la interfaz Collection y está disponible
      * desde Java 8.
@@ -373,29 +199,27 @@ public class EmpleadosControlador {
      *
      * Si no existe el empleado:
      *     → HTTP 404 NOT FOUND.
+     *
+     *
+     * DELETE /empleados/3
+     *          ↓
+     * EmpleadosService
+     *          ↓
+     *       removeIf()
+     *          ↓
+     *     ¿Se eliminó?
+     *        ↙      ↘
+     *      sí        no
+     *      ↓          ↓
+     *     204        404
+     * NO CONTENT   NOT FOUND
      */
 
-    
-    /*
-     * DELETE /empleados/3
-     * 		  ↓
-	 * removeIf()
-	 * 		  ↓
-	 * ¿Se eliminó?
-   		   ↙          ↘
- 		 sí            no
- 		 ↓              ↓
-		204            404
-		NO CONTENT     NOT FOUND
-     */
     @DeleteMapping("/{idEmpleado}")
     public ResponseEntity<Void> eliminarEmpleado(
             @PathVariable long idEmpleado) {
 
-    	
-    	// Recorre la colección y elimina los elementos que cumplen la condición
-        boolean eliminado = empleados.removeIf(
-                empleado -> empleado.id() == idEmpleado);
+        boolean eliminado = empleadosService.eliminarEmpleado(idEmpleado);
 
         if (eliminado) {
             return ResponseEntity.noContent().build();
@@ -405,39 +229,6 @@ public class EmpleadosControlador {
     }
     
     
-    /* otra forma de DELETE mediante streams, tal como se ve en la teoría del curso
-     * en el capítulo PostMapping RequestMapping
-		@DeleteMapping("/{id}")
-		public ResponseEntity eliminarUsuario(@PathVariable Long id) {
-    	Usuario usuarioExistente = usuarios.stream()
-            	.filter(u -> u.getId().equals(id))
-            	.findFirst()
-            	.orElse(null);
-    	if (usuarioExistente != null) {
-        	usuarios.remove(usuarioExistente);
-        	// 204 No Content 
-        	return ResponseEntity.noContent().build();
-    	} else {
-        	// 404 Not Found si no existe 
-        	return ResponseEntity.notFound().build();
-    		}
-		}
-     */
-    
-    
-    /*
-		PUT /empleados/{idEmpleado}
-				↓
-		buscar empleado
-				↓
-			  ¿existe?
-			  ↙       ↘
-			sí         no
-			↓           ↓
-		modificar   404
-			↓
-		  200 OK    
- */
     /*
      * ============================================================
      * Modificar un empleado
@@ -459,49 +250,50 @@ public class EmpleadosControlador {
      *     "nombre": "José García"
      * }
      *
-     * Stream + filter() buscan el empleado cuyo ID coincide.
+     * El controlador delega la modificación en EmpleadosService.
      *
-     * findFirst() devuelve un Optional<EmpleadoDTO> porque el
-     * empleado puede existir o no.
+     * En el Service se recorre la lista mediante un for clásico
+     * utilizando un índice.
      *
-     * Si se encuentra:
-     *     → se sustituye el empleado en la lista.
-     *     → HTTP 200 OK.
+     * Si se encuentra un empleado cuyo ID coincide:
+     *     → set() sustituye el elemento de esa posición.
+     *     → devuelve HTTP 200 OK.
      *
      * Si no se encuentra:
-     *     → HTTP 404 NOT FOUND.
+     *     → devuelve HTTP 404 NOT FOUND.
+     *
+     * Se utiliza un for con índice porque necesitamos conocer
+     * la posición del elemento para poder utilizar set().
+     *
+     *
+     * PUT /empleados/3
+     *          ↓
+     * EmpleadosService
+     *          ↓
+     *      buscar ID
+     *          ↓
+     *      ¿existe?
+     *       ↙      ↘
+     *      sí       no
+     *      ↓         ↓
+     *    set()      404
+     *      ↓
+     *    200 OK
      */
-    	/*
-		PUT /empleados/{idEmpleado}
-				↓
-		buscar empleado
-				↓
-			  ¿existe?
-			  ↙       ↘
-			sí         no
-			↓           ↓
-		modificar   404
-			↓
-		  200 OK    
-     */
+
     @PutMapping("/{idEmpleado}")
     public ResponseEntity<EmpleadoDTO> modificarEmpleado(
             @PathVariable long idEmpleado,
             @RequestBody EmpleadoDTO empleadoModificado) {
 
-        for (int i = 0; i < empleados.size(); i++) {
+        if (empleadosService.modificarEmpleado(
+                idEmpleado, empleadoModificado)) {
 
-            if (empleados.get(i).id() == idEmpleado) {
-
-                empleados.set(i, empleadoModificado);
-
-                return ResponseEntity.ok(empleadoModificado);
-            }
+            return ResponseEntity.ok(empleadoModificado);
         }
 
         return ResponseEntity.notFound().build();
     }
-    
     
 }
 
