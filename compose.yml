@@ -13,7 +13,19 @@ services:
       - "5432:5432"
 
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - codeja_postgres_data:/var/lib/postgresql/data
+
+
+  app:
+    build: .
+    container_name: codeja-springboot
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      - postgres
+
 
 volumes:
-  postgres_data:
+  codeja_postgres_data:
