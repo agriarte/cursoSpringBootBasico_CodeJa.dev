@@ -60,19 +60,19 @@
 						<!--
  						* th:each recorre la lista de empleados recibida en el Model.
  						* Se genera una fila <tr> por cada empleado.
-						-->	
-						<tr th:each="empleado : ${empleados}">
+						-->
+						<tr th:each="empleadoItem : ${listaEmpleados}">
 
-							<td th:text="${empleado.id}"></td>
+							<td th:text="${empleadoItem.id}"></td>
 
-							<td th:text="${empleado.nombre}"></td>
+							<td th:text="${empleadoItem.nombre}"></td>
 
 							<td class="text-center"><a
-								th:href="@{/web/empleados/editar/{id}(id=${empleado.id})}"
+								th:href="@{/web/empleados/editar/{id}(id=${empleadoItem.id})}"
 								class="btn btn-sm btn-warning me-1"> Editar </a>
 
 								<button type="button" class="btn btn-sm btn-danger"
-									th:onclick="'borrarEmpleado(' + ${empleado.id} + ')'">
+									th:onclick="'borrarEmpleado(' + ${empleadoItem.id} + ')'">
 									Borrar</button></td>
 
 						</tr>
@@ -87,11 +87,17 @@
 
 	</div>
 
+	<!-- Alerta con mensaje de información de borrado de empleado -->
+	<!-- será solo visible cuando exista eliminado=true  -->
+	<div id="mensajeEliminado" class="alert alert-success d-none"
+		role="alert">Empleado eliminado correctamente.</div>
 
-	<!-- ========================================================= -->
-	<!-- Modal de confirmación de borrado 
-	<!-- Modal = ventana emergente integrada en la página por Bootstrap.-->                         -->
-	<!-- ========================================================= -->
+
+	<!-- ========================================================== -->
+	<!-- Modal de confirmación de borrado                           -->
+	<!-- Modal = ventana emergente integrada en la página mediante  -->
+	<!-- Bootstrap.                                                 -->
+	<!-- ========================================================== -->
 
 	<div class="modal fade" id="modalEliminar" tabindex="-1"
 		aria-labelledby="modalEliminarLabel" aria-hidden="true">
@@ -122,110 +128,137 @@
 						id="btnConfirmarEliminar">Borrar</button>
 
 				</div>
-
 			</div>
-
 		</div>
-
 	</div>
 
 
 	<!-- Bootstrap JavaScript -->
 	<script
 		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
-    </script>
-
+		
+	</script>
 
 	<script>
 
-        // Guarda temporalmente el ID del empleado que queremos eliminar.
-        let idEmpleadoEliminar;
+    // Comprueba si la URL contiene ?eliminado=true.
+    const parametros =
+        new URLSearchParams(window.location.search);
+
+    if (parametros.get("eliminado") === "true") {
+
+        const mensaje =
+            document.getElementById("mensajeEliminado");
+
+        mensaje.classList.remove("d-none");
+        
+     // Elimina ?eliminado=true de la URL sin recargar la página.
+     // Así, al recargar la página, la URL no mantiene el parámetro
+     // eliminado=true y el mensaje no vuelve a mostrarse.
+        window.history.replaceState(
+            {},
+            document.title,
+            "/web/empleados"
+        );
+    }
 
 
-        // Abre el modal de confirmación.
-        function borrarEmpleado(id) {
-
-            idEmpleadoEliminar = id;
-
-            const modalElemento =
-                document.getElementById("modalEliminar");
-
-            const modal =
-                new bootstrap.Modal(modalElemento);
-
-            modal.show();
-        }
+    // Guarda temporalmente el ID del empleado que queremos eliminar.
+    let idEmpleadoEliminar;
 
 
-        // Ejecuta el DELETE cuando se pulsa "Borrar"
-        // dentro del modal.
-        document
-            .getElementById("btnConfirmarEliminar")
-            .addEventListener("click", function() {
+    // Abre el modal de confirmación.
+    function borrarEmpleado(id) {
 
-            	/*
-            	 * fetch() permite realizar una petición HTTP desde JavaScript.
-            	 *
-            	 * En este caso:
-            	 *
-            	 * DELETE /empleados/{id}
-            	 *
-            	 * El endpoint REST devuelve:
-            	 *
-            	 * 204 → empleado eliminado
-            	 * 404 → empleado no encontrado
-            	 */
-                fetch("/empleados/" + idEmpleadoEliminar, {
+        idEmpleadoEliminar = id;
 
-                    method: "DELETE"
+        const modalElemento =
+            document.getElementById("modalEliminar");
 
-                })
+        const modal =
+            new bootstrap.Modal(modalElemento);
 
-                .then(response => {
+        modal.show();
+    }
 
-                    // 204 significa que se ha eliminado correctamente.
-                    if (response.status === 204) {
-                        return;
-                    }
 
-                    // 404 significa que el empleado no existe.
-                    if (response.status === 404) {
-                        throw new Error(
-                            "El empleado no existe."
-                        );
-                    }
+    // Ejecuta el DELETE cuando se pulsa "Borrar"
+    // dentro del modal.
+    document
+        .getElementById("btnConfirmarEliminar")
+        .addEventListener("click", function() {
 
+            /*
+             * fetch() realiza una petición HTTP desde JavaScript.
+             *
+             * En este caso:
+             *
+             * DELETE /empleados/{id}
+             */
+            fetch("/empleados/" + idEmpleadoEliminar, {
+
+                method: "DELETE"
+
+            })
+
+            .then(response => {
+
+                // 204 significa que se ha eliminado correctamente.
+                if (response.status === 204) {
+                    return;
+                }
+
+                // 404 significa que el empleado no existe.
+                if (response.status === 404) {
                     throw new Error(
-                        "Error al eliminar el empleado."
+                        "El empleado no existe."
                     );
+                }
 
-                })
+                throw new Error(
+                    "Error al eliminar el empleado."
+                );
 
-                .then(() => {
+            })
 
-                    // Volvemos a cargar la lista actualizada.
-                    window.location.href =
-                        "/web/empleados";
+            .then(() => {
 
-                })
+                // Volvemos a cargar la lista indicando
+                // que el empleado se ha eliminado.
+                window.location.href =
+                    "/web/empleados?eliminado=true";
 
-                .catch(error => {
+            })
 
-                    console.error(error);
+            .catch(error => {
 
-                    const mensaje =
-                        document.getElementById("mensajeError");
+                console.error(error);
 
-                    mensaje.textContent =
-                        error.message;
+                // Obtener el modal de Bootstrap.
+                const modalElemento =
+                    document.getElementById("modalEliminar");
 
-                    mensaje.classList.remove("d-none");
+                // Recuperar la instancia del modal ya existente.
+                const modal =
+                    bootstrap.Modal.getInstance(modalElemento);
 
-                });
+                // Cerrar el modal.
+                modal.hide();
+
+                // Mostrar el mensaje de error.
+                const mensaje =
+                    document.getElementById("mensajeError");
+
+                mensaje.textContent =
+                    error.message;
+
+                mensaje.classList.remove("d-none");
 
             });
 
-    </script>
+        });
+
+</script>
 
 </body>
 

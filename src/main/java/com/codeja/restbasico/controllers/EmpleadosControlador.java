@@ -28,7 +28,11 @@ public class EmpleadosControlador {
     // Spring convierte automáticamente el EmpleadoDTO a JSON.
     @GetMapping("/test")
     public EmpleadoDTO getNuevoEmpleado() {
-        return new EmpleadoDTO(123, "Pedro");
+
+        return new EmpleadoDTO(
+                null,
+                "Pedro"
+        );
     }
 	// --------------------------------------------------------	
 	

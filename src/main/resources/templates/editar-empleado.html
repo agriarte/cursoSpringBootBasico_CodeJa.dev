@@ -4,7 +4,8 @@
 <head>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
 
     <title>Editar empleado</title>
 
@@ -29,6 +30,17 @@
 
                 <form id="formEditarEmpleado">
 
+                    <!--
+                     * El ID identifica al empleado que estamos editando.
+                     *
+                     * Thymeleaf obtiene el valor desde el objeto "empleado"
+                     * que el EmpleadosWebController ha colocado en el Model.
+                     *
+                     * readonly impide que el usuario pueda modificar el ID.
+                     *
+                     * El ID fue generado automáticamente por H2 al crear
+                     * el empleado y no debe cambiar durante una edición.
+                     -->
                     <div class="mb-3">
 
                         <label for="id" class="form-label">
@@ -44,6 +56,13 @@
 
                     </div>
 
+
+                    <!--
+                     * El nombre sí puede ser modificado por el usuario.
+                     *
+                     * th:value coloca en el campo el nombre actual
+                     * del empleado.
+                     -->
                     <div class="mb-3">
 
                         <label for="nombre" class="form-label">
@@ -59,18 +78,35 @@
 
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
+
+                    <button type="submit"
+                            class="btn btn-primary">
                         Guardar cambios
                     </button>
 
-                    <a href="/web/empleados" class="btn btn-secondary">
+                    <!--
+                     * No modifica ningún dato.
+                     *
+                     * Simplemente vuelve a la lista de empleados.
+                     * Al no ejecutarse ningún PUT, los cambios realizados
+                     * en el formulario se descartan.
+                     -->
+                    <a href="/web/empleados"
+                       class="btn btn-secondary">
                         Cancelar
                     </a>
 
                 </form>
 
 
-                <!-- Mensaje mostrado después de modificar correctamente -->
+                <!--
+                 * Mensaje mostrado después de realizar correctamente
+                 * el PUT.
+                 *
+                 * d-none mantiene inicialmente oculto el mensaje.
+                 * JavaScript quitará esta clase cuando la modificación
+                 * haya terminado correctamente.
+                 -->
                 <div
                     id="mensajeExito"
                     class="alert alert-success d-none mt-3">
@@ -100,25 +136,73 @@
 
     <script>
 
-        // Envía el empleado modificado al endpoint REST mediante PUT.
+        /*
+         * ============================================================
+         * Envío del formulario
+         * ============================================================
+         *
+         * Cuando el usuario pulsa "Guardar cambios", se produce el
+         * evento submit del formulario.
+         *
+         * JavaScript captura ese evento y realiza el PUT mediante fetch().
+         */
         document
             .getElementById("formEditarEmpleado")
             .addEventListener("submit", function(event) {
 
-                // Evita el envío tradicional del formulario.
+                /*
+                 * Evita el comportamiento tradicional del formulario,
+                 * que provocaría una navegación/recarga de la página.
+                 *
+                 * Nosotros realizaremos la petición mediante fetch().
+                 */
                 event.preventDefault();
 
-                // Obtiene el ID del empleado.
+
+                /*
+                 * Obtiene el ID del empleado desde el campo del formulario.
+                 *
+                 * Number() convierte el valor recibido del HTML
+                 * (que es texto) en un número.
+                 *
+                 * Este ID identifica qué empleado será modificado.
+                 */
                 const id = Number(
                     document.getElementById("id").value
                 );
 
-                // Construye el objeto que se enviará como JSON.
+
+                /*
+                 * Construye el objeto JavaScript que se enviará
+                 * al endpoint REST.
+                 *
+                 * El ID se mantiene porque identifica el empleado.
+                 * El nombre contiene el nuevo valor introducido
+                 * por el usuario.
+                 */
                 const empleado = {
+
                     id: id,
-                    nombre: document.getElementById("nombre").value
+
+                    nombre:
+                        document.getElementById("nombre").value
                 };
 
+
+                /*
+                 * ====================================================
+                 * PUT /empleados/{id}
+                 * ====================================================
+                 *
+                 * fetch() realiza la petición HTTP contra nuestra API REST.
+                 *
+                 * Ejemplo:
+                 *
+                 * PUT /empleados/3
+                 *
+                 * El objeto "empleado" se convierte a JSON y se
+                 * envía en el cuerpo de la petición.
+                 */
                 fetch("/empleados/" + id, {
 
                     method: "PUT",
@@ -127,35 +211,70 @@
                         "Content-Type": "application/json"
                     },
 
+                    /*
+                     * JSON.stringify() convierte el objeto JavaScript
+                     * en una cadena JSON.
+                     */
                     body: JSON.stringify(empleado)
 
                 })
+
+
+                /*
+                 * Procesamos la respuesta HTTP recibida de Spring Boot.
+                 */
                 .then(response => {
 
-                    // Si la respuesta HTTP no es correcta,
-                    // se genera un error.
+                    /*
+                     * response.ok es true cuando el servidor responde
+                     * con un código HTTP entre 200 y 299.
+                     */
                     if (!response.ok) {
+
                         throw new Error(
                             "Error al modificar el empleado"
                         );
                     }
 
+                    /*
+                     * El Controller REST devuelve el EmpleadoDTO
+                     * modificado en formato JSON.
+                     *
+                     * Lo convertimos en un objeto JavaScript.
+                     */
                     return response.json();
 
                 })
+
+
+                /*
+                 * La respuesta JSON no la necesitamos en este momento.
+                 *
+                 * Solo necesitamos saber que la modificación ha sido
+                 * realizada correctamente.
+                 */
                 .then(() => {
 
-                    // Oculta el formulario después de modificar.
+                    /*
+                     * Oculta el formulario.
+                     */
                     document
                         .getElementById("formEditarEmpleado")
                         .classList.add("d-none");
 
-                    // Muestra el mensaje de confirmación.
+                    /*
+                     * Muestra el mensaje de confirmación.
+                     */
                     document
                         .getElementById("mensajeExito")
                         .classList.remove("d-none");
 
                 })
+
+
+                /*
+                 * Captura los errores producidos durante el proceso.
+                 */
                 .catch(error => {
 
                     console.error(error);

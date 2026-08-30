@@ -1,7 +1,7 @@
 package com.codeja.restbasico.dto;
 
 public record EmpleadoDTO (
-		long id,
+		Long id,
 		String nombre) {
 }
 

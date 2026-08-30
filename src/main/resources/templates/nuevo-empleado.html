@@ -4,7 +4,8 @@
 <head>
 
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
 
     <title>Nuevo empleado</title>
 
@@ -62,23 +63,16 @@
 
                 <form id="formEmpleado">
 
+                    <!--
+                     * El ID no se solicita al usuario.
+                     *
+                     * H2 genera automáticamente el identificador
+                     * mediante @GeneratedValue en la Entity Empleado.
+                     -->
                     <div class="mb-3">
 
-                        <label for="id" class="form-label">
-                            ID
-                        </label>
-
-                        <input type="number"
-                               id="id"
-                               class="form-control"
-                               required>
-
-                    </div>
-
-
-                    <div class="mb-3">
-
-                        <label for="nombre" class="form-label">
+                        <label for="nombre"
+                               class="form-label">
                             Nombre
                         </label>
 
@@ -112,40 +106,34 @@
     <script>
 
         /*
-         * Detecta el envío del formulario.
+         * ============================================================
+         * Envío del formulario
+         * ============================================================
          *
-         * El formulario HTML normalmente intentaría enviar los datos
-         * directamente al servidor y recargar la página.
+         * Detecta el evento submit del formulario.
          *
-         * event.preventDefault() evita ese comportamiento.
-         * De esta forma podemos realizar nosotros la petición mediante
-         * fetch().
+         * En lugar de realizar el envío HTML tradicional,
+         * JavaScript realizará la petición mediante fetch().
          */
         document
             .getElementById("formEmpleado")
             .addEventListener("submit", function(event) {
 
+                /*
+                 * Evita el comportamiento tradicional del formulario,
+                 * que provocaría una recarga/navegación.
+                 */
                 event.preventDefault();
 
 
                 /*
-                 * Construimos un objeto JavaScript con los datos
+                 * Construimos el objeto JavaScript con los datos
                  * introducidos por el usuario.
                  *
-                 * document.getElementById()
-                 *     → obtiene un elemento HTML.
-                 *
-                 * .value
-                 *     → obtiene el valor introducido.
-                 *
-                 * Number()
-                 *     → convierte el ID de texto a número.
+                 * El ID no se incluye porque H2 lo genera
+                 * automáticamente al guardar la Entity.
                  */
                 const empleado = {
-
-                    id: Number(
-                        document.getElementById("id").value
-                    ),
 
                     nombre:
                         document.getElementById("nombre").value
@@ -154,12 +142,15 @@
 
 
                 /*
-                 * fetch() permite realizar desde JavaScript
-                 * una petición HTTP.
-                 *
-                 * En este caso:
-                 *
+                 * ====================================================
                  * POST /empleados
+                 * ====================================================
+                 *
+                 * fetch() realiza la petición HTTP contra nuestra
+                 * API REST.
+                 *
+                 * El cuerpo de la petición contiene el empleado
+                 * en formato JSON.
                  */
                 fetch("/empleados", {
 
@@ -175,12 +166,11 @@
 
                     /*
                      * JSON.stringify() convierte el objeto JavaScript
-                     * en una cadena JSON que se envía al servidor.
+                     * en una cadena JSON.
                      *
                      * Ejemplo:
                      *
                      * {
-                     *     "id": 6,
                      *     "nombre": "Pedro"
                      * }
                      */
@@ -190,27 +180,28 @@
 
 
                 /*
-                 * then() recibe la respuesta HTTP de Spring Boot.
+                 * Procesamos la respuesta HTTP recibida de Spring Boot.
                  */
                 .then(response => {
 
                     /*
-                     * response.ok es true cuando el código HTTP
-                     * está dentro del rango 200-299.
+                     * response.ok es true cuando el servidor devuelve
+                     * un código HTTP entre 200 y 299.
                      *
                      * En nuestro caso esperamos:
                      *
                      * 201 CREATED
                      */
                     if (!response.ok) {
+
                         throw new Error(
                             "Error al crear el empleado"
                         );
                     }
 
                     /*
-                     * El POST devuelve el EmpleadoDTO creado
-                     * en formato JSON.
+                     * El Controller REST devuelve el EmpleadoDTO
+                     * creado en formato JSON.
                      *
                      * response.json() convierte ese JSON en
                      * un objeto JavaScript.
@@ -221,11 +212,10 @@
 
 
                 /*
-                 * La respuesta JSON no necesitamos utilizarla
-                 * en este momento.
+                 * No necesitamos utilizar el objeto recibido.
                  *
-                 * Solo necesitamos saber que la creación
-                 * se ha realizado correctamente.
+                 * Solo necesitamos saber que el empleado se creó
+                 * correctamente para actualizar la interfaz.
                  */
                 .then(() => {
 
@@ -247,7 +237,7 @@
 
 
                 /*
-                 * Captura los errores producidos durante la petición.
+                 * Captura los errores producidos durante el proceso.
                  */
                 .catch(error => {
 
@@ -259,8 +249,12 @@
 
 
         /*
-         * Permite volver a utilizar el formulario para crear
-         * otro empleado.
+         * ============================================================
+         * Crear otro empleado
+         * ============================================================
+         *
+         * Permite volver a utilizar el mismo formulario después
+         * de haber creado correctamente un empleado.
          */
         function crearOtro() {
 

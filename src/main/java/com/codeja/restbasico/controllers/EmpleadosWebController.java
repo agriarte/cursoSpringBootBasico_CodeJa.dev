@@ -63,11 +63,13 @@ public class EmpleadosWebController {
      * GET /web/empleados
      *
      * Obtiene la lista mediante EmpleadosService y la añade
-     * al Model con el nombre "empleados".
+     * al Model con el nombre "listaEmpleados".
+     * Para entender qué es un Model, podemos pensar que es un contenedor
+     * o bolsa de datos que se envía a la vista para ser procesado por Thymeleaf.
      *
      * Thymeleaf utilizará ese nombre en la plantilla:
      *
-     * ${empleados}
+     * ${listaEmpleados}
      *
      * return "empleados" indica que se debe cargar:
      *
@@ -77,7 +79,7 @@ public class EmpleadosWebController {
     public String mostrarEmpleados(Model model) {
 
         model.addAttribute(
-                "empleados",
+                "listaEmpleados",
                 empleadosService.getEmpleados()
         );
 

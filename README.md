@@ -29,7 +29,7 @@ Ejemplo de API REST con un CRUD básico de empleados y una interfaz web con **Th
 | PUT | `/empleados/{id}` | Modificar |
 | DELETE | `/empleados/{id}` | Eliminar |
 
-Los datos se almacenan actualmente en memoria mediante `ArrayList`.
+En el proyecto inicial, los datos se almacenan en memoria mediante `ArrayList`.
 
 ### Interfaz web
 
@@ -47,3 +47,38 @@ La interfaz utiliza:
 - Formularios para crear y modificar
 - Botones para editar y eliminar
 - Modal de confirmación para eliminar
+
+## 3. Evolución del Rest Básico
+
+Inicialmente se utiliza una `ArrayList` para almacenar los empleados y realizar las operaciones básicas del CRUD.
+
+Las operaciones pueden realizarse tanto mediante los endpoints de la API REST como desde la interfaz web.
+
+### Persistencia con H2
+
+En la etapa actual se sustituye la `ArrayList` por una base de datos H2 en memoria, utilizando JPA y Spring Data JPA.
+
+Se incorporan:
+
+- `@Entity`
+- `Empleado`
+- `EmpleadoDTO`
+- `EmpleadoRepository`
+- `JpaRepository`
+- H2
+- Hibernate
+
+La arquitectura pasa a ser:
+
+
+```
+Controller
+    ↓
+Service
+    ↓
+Repository
+    ↓
+JPA / Hibernate
+    ↓
+   H2
+```
