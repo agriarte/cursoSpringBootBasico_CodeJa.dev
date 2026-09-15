@@ -1,264 +1,621 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+
+<html lang="es"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 
 <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
 
-<title>Gestión de empleados</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
 
-<!-- Bootstrap -->
-<link
-	href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
-	rel="stylesheet">
+    <title>Gestión de empleados</title>
+
+
+    <!-- Bootstrap -->
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet">
 
 </head>
 
+
 <body class="bg-light">
 
-	<div class="container mt-5">
 
-		<div class="card shadow">
+    <div class="container mt-5">
 
-			<div class="card-header">
-				<h2 class="mb-0">Gestión de empleados</h2>
-			</div>
-
-			<div class="card-body">
-
-				<div class="d-flex justify-content-between align-items-center mb-3">
-
-					<h4 class="mb-0">Empleados</h4>
-
-					<a href="/web/empleados/nuevo" class="btn btn-primary"> Nuevo
-						empleado </a>
-
-				</div>
+        <div class="card shadow">
 
 
-				<!-- Mensaje de error -->
-				<div id="mensajeError" class="alert alert-danger d-none"
-					role="alert"></div>
+            <!-- ====================================================== -->
+            <!-- CABECERA                                               -->
+            <!-- ====================================================== -->
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <h2 class="mb-0">
+                    Gestión de empleados
+                </h2>
 
 
-				<table class="table table-striped table-hover align-middle">
+                <div>
 
-					<thead class="table-dark">
+                    <!--
+                        isAuthenticated()
+                        ------------------
 
-						<tr>
-							<th>ID</th>
-							<th>Nombre</th>
-							<th class="text-center">Acciones</th>
-						</tr>
+                        Comprueba si existe un usuario autenticado.
 
-					</thead>
+                        Si el usuario ha iniciado sesión, se muestra
+                        su nombre y el botón "Cerrar sesión".
+                    -->
 
-					<tbody>
+                    <span sec:authorize="isAuthenticated()"
+                          class="me-3">
 
+                        Usuario:
+                        <strong sec:authentication="name"></strong>
 
-						<!--
- 						* th:each recorre la lista de empleados recibida en el Model.
- 						* Se genera una fila <tr> por cada empleado.
-						-->
-						<tr th:each="empleadoItem : ${listaEmpleados}">
-
-							<td th:text="${empleadoItem.id}"></td>
-
-							<td th:text="${empleadoItem.nombre}"></td>
-
-							<td class="text-center"><a
-								th:href="@{/web/empleados/editar/{id}(id=${empleadoItem.id})}"
-								class="btn btn-sm btn-warning me-1"> Editar </a>
-
-								<button type="button" class="btn btn-sm btn-danger"
-									th:onclick="'borrarEmpleado(' + ${empleadoItem.id} + ')'">
-									Borrar</button></td>
-
-						</tr>
-
-					</tbody>
-
-				</table>
-
-			</div>
-
-		</div>
-
-	</div>
-
-	<!-- Alerta con mensaje de información de borrado de empleado -->
-	<!-- será solo visible cuando exista eliminado=true  -->
-	<div id="mensajeEliminado" class="alert alert-success d-none"
-		role="alert">Empleado eliminado correctamente.</div>
+                    </span>
 
 
-	<!-- ========================================================== -->
-	<!-- Modal de confirmación de borrado                           -->
-	<!-- Modal = ventana emergente integrada en la página mediante  -->
-	<!-- Bootstrap.                                                 -->
-	<!-- ========================================================== -->
+                    <!--
+                        isAnonymous()
+                        --------------
 
-	<div class="modal fade" id="modalEliminar" tabindex="-1"
-		aria-labelledby="modalEliminarLabel" aria-hidden="true">
+                        Comprueba si el usuario NO está autenticado.
 
-		<div class="modal-dialog">
+                        Los usuarios anónimos pueden acceder al formulario
+                        de login para iniciar sesión.
+                    -->
 
-			<div class="modal-content">
+                    <a href="/login"
+                       class="btn btn-outline-primary"
+                       sec:authorize="isAnonymous()">
 
-				<div class="modal-header">
+                        Iniciar sesión
 
-					<h5 class="modal-title" id="modalEliminarLabel">Confirmar
-						eliminación</h5>
-
-					<button type="button" class="btn-close" data-bs-dismiss="modal"
-						aria-label="Cerrar"></button>
-
-				</div>
-
-				<div class="modal-body">¿Está seguro de que desea eliminar
-					este empleado?</div>
-
-				<div class="modal-footer">
-
-					<button type="button" class="btn btn-secondary"
-						data-bs-dismiss="modal">Cancelar</button>
-
-					<button type="button" class="btn btn-danger"
-						id="btnConfirmarEliminar">Borrar</button>
-
-				</div>
-			</div>
-		</div>
-	</div>
+                    </a>
 
 
-	<!-- Bootstrap JavaScript -->
-	<script
-		src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
-		
-	</script>
+                    <!--
+                        CERRAR SESIÓN
+                        -------------
 
-	<script>
+                        El formulario realiza una petición POST a /logout.
 
-    // Comprueba si la URL contiene ?eliminado=true.
-    const parametros =
-        new URLSearchParams(window.location.search);
+                        Spring Security se encarga de cerrar la sesión
+                        del usuario y posteriormente redirigirlo a la
+                        URL configurada mediante logoutSuccessUrl().
+                    -->
 
-    if (parametros.get("eliminado") === "true") {
+                    <form th:action="@{/logout}"
+                          method="post"
+                          class="d-inline"
+                          sec:authorize="isAuthenticated()">
 
-        const mensaje =
-            document.getElementById("mensajeEliminado");
+                        <button type="submit"
+                                class="btn btn-outline-danger">
 
-        mensaje.classList.remove("d-none");
-        
-     // Elimina ?eliminado=true de la URL sin recargar la página.
-     // Así, al recargar la página, la URL no mantiene el parámetro
-     // eliminado=true y el mensaje no vuelve a mostrarse.
-        window.history.replaceState(
-            {},
-            document.title,
-            "/web/empleados"
-        );
-    }
+                            Cerrar sesión
 
+                        </button>
 
-    // Guarda temporalmente el ID del empleado que queremos eliminar.
-    let idEmpleadoEliminar;
+                    </form>
+
+                </div>
+
+            </div>
 
 
-    // Abre el modal de confirmación.
-    function borrarEmpleado(id) {
+            <!-- ====================================================== -->
+            <!-- CONTENIDO                                              -->
+            <!-- ====================================================== -->
 
-        idEmpleadoEliminar = id;
-
-        const modalElemento =
-            document.getElementById("modalEliminar");
-
-        const modal =
-            new bootstrap.Modal(modalElemento);
-
-        modal.show();
-    }
+            <div class="card-body">
 
 
-    // Ejecuta el DELETE cuando se pulsa "Borrar"
-    // dentro del modal.
-    document
-        .getElementById("btnConfirmarEliminar")
-        .addEventListener("click", function() {
+                <div class="d-flex justify-content-between align-items-center mb-3">
+
+                    <h4 class="mb-0">
+                        Empleados
+                    </h4>
+
+
+                    <!--
+                        hasRole("ADMIN")
+                        ----------------
+
+                        Solo los usuarios que tengan ROLE_ADMIN
+                        pueden ver este botón.
+
+                        Thymeleaf no genera este elemento HTML para
+                        los usuarios que no tengan ese rol.
+
+                        Esto controla la interfaz, pero la seguridad
+                        real de la operación se controla también
+                        en Spring Security mediante las reglas HTTP.
+                    -->
+
+                    <a href="/web/empleados/nuevo"
+                       class="btn btn-primary"
+                       sec:authorize="hasRole('ADMIN')">
+
+                        Nuevo empleado
+
+                    </a>
+
+                </div>
+
+
+                <!--
+                    Contenedor utilizado por JavaScript para mostrar
+                    mensajes de error durante las operaciones AJAX.
+                -->
+
+                <div id="mensajeError"
+                     class="alert alert-danger d-none"
+                     role="alert">
+                </div>
+
+
+                <!-- ================================================== -->
+                <!-- TABLA DE EMPLEADOS                                 -->
+                <!-- ================================================== -->
+
+                <table class="table table-striped table-hover align-middle">
+
+                    <thead class="table-dark">
+
+                        <tr>
+
+                            <th>
+                                ID
+                            </th>
+
+                            <th>
+                                Nombre
+                            </th>
+
+
+                            <!--
+                                La columna "Acciones" solo se muestra
+                                a los usuarios con ROLE_ADMIN.
+
+                                Los usuarios con ROLE_USER pueden consultar
+                                la lista, pero no pueden modificarla.
+                            -->
+
+                            <th class="text-center"
+                                sec:authorize="hasRole('ADMIN')">
+
+                                Acciones
+
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+
+                        <!--
+                            th:each
+                            -------
+
+                            Recorre la lista de empleados recibida
+                            en el Model.
+
+                            Se genera una fila <tr> por cada empleado.
+                        -->
+
+                        <tr th:each="empleadoItem : ${listaEmpleados}">
+
+                            <td th:text="${empleadoItem.id}">
+                            </td>
+
+                            <td th:text="${empleadoItem.nombre}">
+                            </td>
+
+
+                            <!--
+                                Las acciones solo se muestran a los
+                                usuarios que tengan ROLE_ADMIN.
+
+                                Por tanto, un ROLE_USER no verá esta
+                                columna ni los botones Editar y Borrar.
+                            -->
+
+                            <td class="text-center"
+                                sec:authorize="hasRole('ADMIN')">
+
+
+                                <!--
+                                    EDITAR
+
+                                    Enlace hacia la página que permite
+                                    modificar el empleado seleccionado.
+                                -->
+
+                                <a th:href="@{/web/empleados/editar/{id}(id=${empleadoItem.id})}"
+                                   class="btn btn-sm btn-warning me-1">
+
+                                    Editar
+
+                                </a>
+
+
+                                <!--
+                                    BORRAR
+
+                                    Al pulsar el botón se ejecuta la función
+                                    JavaScript borrarEmpleado(), que abre
+                                    el modal de confirmación.
+                                -->
+
+                                <button type="button"
+                                        class="btn btn-sm btn-danger"
+                                        th:onclick="'borrarEmpleado(' + ${empleadoItem.id} + ')'">
+
+                                    Borrar
+
+                                </button>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================== -->
+    <!-- MENSAJE DE EMPLEADO ELIMINADO                              -->
+    <!-- ========================================================== -->
+
+    <!--
+        Este mensaje permanece oculto inicialmente.
+
+        JavaScript lo muestra cuando la URL contiene:
+
+        ?eliminado=true
+    -->
+
+    <div id="mensajeEliminado"
+         class="alert alert-success d-none"
+         role="alert">
+
+        Empleado eliminado correctamente.
+
+    </div>
+
+
+    <!-- ========================================================== -->
+    <!-- MODAL DE CONFIRMACIÓN DE BORRADO                           -->
+    <!-- ========================================================== -->
+
+    <!--
+        Modal de Bootstrap utilizado para solicitar confirmación
+        antes de eliminar un empleado.
+
+        Solo se genera para usuarios con ROLE_ADMIN.
+
+        Aunque el botón "Borrar" ya está protegido, también protegemos
+        el modal porque forma parte de la funcionalidad exclusiva
+        del administrador.
+    -->
+
+    <div class="modal fade"
+         id="modalEliminar"
+         tabindex="-1"
+         aria-labelledby="modalEliminarLabel"
+         aria-hidden="true"
+         sec:authorize="hasRole('ADMIN')">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title"
+                        id="modalEliminarLabel">
+
+                        Confirmar eliminación
+
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Cerrar">
+                    </button>
+
+                </div>
+
+
+                <div class="modal-body">
+
+                    ¿Está seguro de que desea eliminar
+                    este empleado?
+
+                </div>
+
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancelar
+
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-danger"
+                            id="btnConfirmarEliminar">
+
+                        Borrar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ========================================================== -->
+    <!-- BOOTSTRAP JAVASCRIPT                                       -->
+    <!-- ========================================================== -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
+    </script>
+
+
+    <script>
+
+
+        /*
+         * ==========================================================
+         * MENSAJE DE EMPLEADO ELIMINADO
+         * ==========================================================
+         *
+         * Comprueba si la URL contiene:
+         *
+         *     ?eliminado=true
+         *
+         * Si existe, muestra el mensaje de confirmación.
+         */
+
+        const parametros =
+            new URLSearchParams(window.location.search);
+
+
+        if (parametros.get("eliminado") === "true") {
+
+            const mensaje =
+                document.getElementById("mensajeEliminado");
+
+            mensaje.classList.remove("d-none");
+
 
             /*
-             * fetch() realiza una petición HTTP desde JavaScript.
+             * Elimina ?eliminado=true de la URL sin recargar
+             * la página.
              *
-             * En este caso:
-             *
-             * DELETE /empleados/{id}
+             * De esta forma, si el usuario recarga la página,
+             * el mensaje no vuelve a mostrarse.
              */
-            fetch("/empleados/" + idEmpleadoEliminar, {
 
-                method: "DELETE"
+            window.history.replaceState(
+                {},
+                document.title,
+                "/web/empleados"
+            );
+        }
 
-            })
 
-            .then(response => {
 
-                // 204 significa que se ha eliminado correctamente.
-                if (response.status === 204) {
-                    return;
-                }
+        /*
+         * ==========================================================
+         * EMPLEADO A ELIMINAR
+         * ==========================================================
+         *
+         * Guarda temporalmente el ID del empleado seleccionado
+         * para utilizarlo cuando el usuario confirme el borrado.
+         */
 
-                // 404 significa que el empleado no existe.
-                if (response.status === 404) {
+        let idEmpleadoEliminar;
+
+
+
+        /*
+         * ==========================================================
+         * ABRIR MODAL
+         * ==========================================================
+         *
+         * Recibe el ID del empleado seleccionado y abre el modal
+         * de confirmación de Bootstrap.
+         */
+
+        function borrarEmpleado(id) {
+
+            idEmpleadoEliminar = id;
+
+
+            const modalElemento =
+                document.getElementById("modalEliminar");
+
+
+            const modal =
+                new bootstrap.Modal(modalElemento);
+
+
+            modal.show();
+        }
+
+
+
+        /*
+         * ==========================================================
+         * CONFIRMAR BORRADO
+         * ==========================================================
+         *
+         * Cuando el usuario pulsa "Borrar" dentro del modal,
+         * se realiza una petición DELETE mediante fetch().
+         */
+
+        document
+            .getElementById("btnConfirmarEliminar")
+            .addEventListener("click", function() {
+
+
+                /*
+                 * fetch()
+                 * -------
+                 *
+                 * Realiza una petición HTTP desde JavaScript.
+                 *
+                 * En este caso se envía:
+                 *
+                 *     DELETE /empleados/{id}
+                 */
+
+                fetch("/empleados/" + idEmpleadoEliminar, {
+
+                    method: "DELETE"
+
+                })
+
+
+                .then(response => {
+
+
+                    /*
+                     * 204 NO CONTENT
+                     * ----------------
+                     *
+                     * El empleado se ha eliminado correctamente.
+                     */
+
+                    if (response.status === 204) {
+                        return;
+                    }
+
+
+                    /*
+                     * 404 NOT FOUND
+                     * ----------------
+                     *
+                     * El empleado que se quería eliminar
+                     * no existe.
+                     */
+
+                    if (response.status === 404) {
+
+                        throw new Error(
+                            "El empleado no existe."
+                        );
+                    }
+
+
+                    /*
+                     * Cualquier otro código HTTP se trata
+                     * como un error de eliminación.
+                     */
+
                     throw new Error(
-                        "El empleado no existe."
+                        "Error al eliminar el empleado."
                     );
-                }
 
-                throw new Error(
-                    "Error al eliminar el empleado."
-                );
+                })
 
-            })
 
-            .then(() => {
+                .then(() => {
 
-                // Volvemos a cargar la lista indicando
-                // que el empleado se ha eliminado.
-                window.location.href =
-                    "/web/empleados?eliminado=true";
 
-            })
+                    /*
+                     * Volvemos a cargar la lista añadiendo
+                     * eliminado=true a la URL.
+                     *
+                     * Al cargar la página, JavaScript mostrará
+                     * el mensaje de confirmación.
+                     */
 
-            .catch(error => {
+                    window.location.href =
+                        "/web/empleados?eliminado=true";
 
-                console.error(error);
+                })
 
-                // Obtener el modal de Bootstrap.
-                const modalElemento =
-                    document.getElementById("modalEliminar");
 
-                // Recuperar la instancia del modal ya existente.
-                const modal =
-                    bootstrap.Modal.getInstance(modalElemento);
+                .catch(error => {
 
-                // Cerrar el modal.
-                modal.hide();
+                    console.error(error);
 
-                // Mostrar el mensaje de error.
-                const mensaje =
-                    document.getElementById("mensajeError");
 
-                mensaje.textContent =
-                    error.message;
+                    /*
+                     * Obtener el modal de Bootstrap.
+                     */
 
-                mensaje.classList.remove("d-none");
+                    const modalElemento =
+                        document.getElementById("modalEliminar");
+
+
+                    /*
+                     * Recuperar la instancia del modal
+                     * que ya está abierta.
+                     */
+
+                    const modal =
+                        bootstrap.Modal.getInstance(modalElemento);
+
+
+                    /*
+                     * Cerrar el modal.
+                     */
+
+                    modal.hide();
+
+
+                    /*
+                     * Mostrar el mensaje de error.
+                     */
+
+                    const mensaje =
+                        document.getElementById("mensajeError");
+
+
+                    mensaje.textContent =
+                        error.message;
+
+
+                    mensaje.classList.remove("d-none");
+
+                });
 
             });
 
-        });
-
-</script>
+    </script>
 
 </body>
 

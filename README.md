@@ -21,23 +21,23 @@ Ejemplo de API REST con un CRUD básico de empleados y una interfaz web con **Th
 
 ### API REST
 
-| Método | Endpoint          | Operación |
-| ------ | ----------------- | --------- |
-| GET    | `/empleados`      | Listar    |
-| GET    | `/empleados/{id}` | Consultar |
-| POST   | `/empleados`      | Crear     |
-| PUT    | `/empleados/{id}` | Modificar |
-| DELETE | `/empleados/{id}` | Eliminar  |
+| Método | Endpoint | Operación |
+| ------ | -------- | --------- |
+| GET | `/empleados` | Listar |
+| GET | `/empleados/{id}` | Consultar |
+| POST | `/empleados` | Crear |
+| PUT | `/empleados/{id}` | Modificar |
+| DELETE | `/empleados/{id}` | Eliminar |
 
 En el proyecto inicial, los datos se almacenan en memoria mediante `ArrayList`.
 
 ### Interfaz web
 
-| Método | Endpoint                     | Operación             |
-| ------ | ----------------------------- | --------------------- |
-| GET    | `/web/empleados`             | Mostrar lista         |
-| GET    | `/web/empleados/nuevo`       | Formulario de alta    |
-| GET    | `/web/empleados/editar/{id}` | Formulario de edición |
+| Método | Endpoint | Operación |
+| ------ | -------- | --------- |
+| GET | `/web/empleados` | Mostrar lista |
+| GET | `/web/empleados/nuevo` | Formulario de alta |
+| GET | `/web/empleados/editar/{id}` | Formulario de edición |
 
 La interfaz utiliza:
 
@@ -50,7 +50,7 @@ La interfaz utiliza:
 
 ## 3. Evolución del Rest Básico
 
-El proyecto evoluciona progresivamente desde una implementación sencilla en memoria hasta una aplicación con persistencia en una base de datos real y ejecución mediante Docker.
+El proyecto evoluciona progresivamente desde una implementación sencilla en memoria hasta una aplicación con persistencia en una base de datos real, ejecución mediante Docker y protección mediante Spring Security.
 
 Cada etapa del desarrollo queda registrada en un commit, por lo que es posible recuperar el estado del proyecto correspondiente a cada etapa consultando y retrocediendo en el historial de Git.
 
@@ -138,7 +138,9 @@ La conexión desde Spring Boot se configura mediante `application.properties`, i
 * Configuración de Hibernate
 
 Se sustituye la dependencia del driver de H2 por el driver JDBC de PostgreSQL.
+
 La aplicación Spring Boot se construye mediante un Dockerfile dividido en dos etapas. La primera utiliza Maven y JDK 21 para compilar el proyecto y generar el JAR. La segunda utiliza únicamente JRE 21 para ejecutar la aplicación.
+
 La arquitectura pasa a ser:
 
 ```text
@@ -245,27 +247,150 @@ La aplicación web queda disponible en:
 http://localhost:8080/web/empleados
 ```
 
+### 3.6. Spring Security
+
+Como siguiente evolución se incorpora **Spring Security** para proteger la aplicación y controlar el acceso a las diferentes operaciones del CRUD.
+
+Se añade la dependencia:
+
+```text
+spring-boot-starter-security
+```
+
+La seguridad se configura mediante una clase `SecurityConfig`, donde se define un `SecurityFilterChain`.
+
+La aplicación utiliza **form login** para la autenticación, mostrando la página de login estándar proporcionada por Spring Security.
+
+Actualmente los usuarios se gestionan en memoria mediante `InMemoryUserDetailsManager`.
+
+Se definen dos usuarios con diferentes roles:
+
+```text
+user
+  ↓
+ROLE_USER
+
+admin
+  ↓
+ROLE_ADMIN
+```
+
+El acceso a las operaciones se controla mediante el método HTTP y el rol del usuario.
+
+La configuración actual establece:
+
+| Operación | Acceso |
+| --------- | ------ |
+| GET `/empleados` | Usuario autenticado |
+| GET `/empleados/**` | Usuario autenticado |
+| POST `/empleados` | `ADMIN` |
+| PUT `/empleados/**` | `ADMIN` |
+| DELETE `/empleados/**` | `ADMIN` |
+| `/web/**` | Usuario autenticado |
+| Resto de peticiones | Permitidas |
+
+De esta forma se diferencia entre **autenticación** y **autorización**:
+
+* **Autenticación:** determina quién es el usuario que ha iniciado sesión.
+* **Autorización:** determina qué operaciones puede realizar ese usuario según sus roles.
+
+Por ejemplo, un usuario con `ROLE_USER` puede consultar los empleados, pero no puede crear, modificar o eliminar empleados.
+
+Un usuario con `ROLE_ADMIN` puede realizar además las operaciones de modificación del CRUD.
+
+### Seguridad en la interfaz web
+
+La interfaz Thymeleaf utiliza la extensión:
+
+```text
+thymeleaf-extras-springsecurity6
+```
+
+Esta extensión permite utilizar atributos `sec:*` dentro de las plantillas Thymeleaf.
+
+Por ejemplo:
+
+```html
+sec:authorize="isAuthenticated()"
+```
+
+permite mostrar contenido únicamente a usuarios autenticados.
+
+También se utiliza:
+
+```html
+sec:authorize="isAnonymous()"
+```
+
+para mostrar contenido únicamente a usuarios que no han iniciado sesión.
+
+Para controlar las opciones disponibles para los administradores se utiliza:
+
+```html
+sec:authorize="hasRole('ADMIN')"
+```
+
+Por ejemplo, los botones **Nuevo**, **Editar** y **Borrar** únicamente se muestran a los usuarios que tienen el rol `ADMIN`.
+
+Para mostrar el nombre del usuario autenticado se utiliza:
+
+```html
+sec:authentication="name"
+```
+
+La plantilla también utiliza:
+
+```html
+th:action="@{/logout}"
+```
+
+`th:action` es un atributo de Thymeleaf que permite generar el atributo `action` del formulario HTML.
+
+En este caso el formulario realiza una petición `POST` a `/logout`, que es procesada por Spring Security para cerrar la sesión.
+
+La configuración también establece una URL de redirección después del logout:
+
+```text
+/logout
+   ↓
+/web/empleados
+```
+
+Es importante distinguir entre **ocultar botones en la interfaz** y **proteger realmente las operaciones**.
+
+Los atributos `sec:authorize` controlan qué elementos se muestran al usuario, pero la protección real de las operaciones se realiza mediante la configuración de Spring Security en `SecurityConfig`.
+
+Por tanto, aunque un usuario no vea los botones de administración, Spring Security también impide que pueda ejecutar directamente las operaciones `POST`, `PUT` o `DELETE` si no dispone del rol necesario.
+
 ## 4. Arquitectura actual
 
 La arquitectura actual del proyecto es:
 
 ```text
-Navegador
-    ↓
-Spring Boot
-    ↓
-Controller
-    ↓
-Service
-    ↓
-Repository
-    ↓
-JPA / Hibernate
-    ↓
-PostgreSQL
-    ↓
-Docker Volume
+                         Spring Security
+                              ↓
+Navegador ───────────→ SecurityFilterChain
+                              ↓
+                          Controller
+                              ↓
+                           Service
+                              ↓
+                         Repository
+                              ↓
+                       JPA / Hibernate
+                              ↓
+                         PostgreSQL
+                              ↓
+                       Docker Volume
 ```
+
+Spring Security se encuentra delante de los Controllers y actúa como filtro de las peticiones HTTP.
+
+Antes de que una petición llegue al Controller, Spring Security comprueba las reglas de seguridad configuradas.
+
+La autenticación se realiza mediante **form login** y la autorización mediante los roles `USER` y `ADMIN`.
+
+La interfaz web utiliza Thymeleaf junto con `thymeleaf-extras-springsecurity6` para adaptar la información mostrada al usuario autenticado.
 
 Spring Boot y PostgreSQL se ejecutan actualmente en contenedores independientes gestionados mediante Docker Compose.
 
@@ -286,3 +411,37 @@ PostgreSQL + Spring Boot en Docker
 ```
 
 Cada etapa representa una evolución del proyecto y permite conservar como referencia didáctica los diferentes conceptos incorporados durante el desarrollo.
+
+## 6. Evolución global del proyecto
+
+La evolución completa del proyecto puede resumirse de la siguiente forma:
+
+```text
+Spring Boot básico
+        ↓
+API REST
+        ↓
+Service
+        ↓
+JPA / Hibernate
+        ↓
+H2
+        ↓
+PostgreSQL
+        ↓
+Docker
+        ↓
+Docker Compose
+        ↓
+Spring Security
+        ↓
+Form Login
+        ↓
+Roles USER / ADMIN
+        ↓
+Autorización de operaciones CRUD
+        ↓
+Integración Thymeleaf + Spring Security
+```
+
+El objetivo del proyecto es disponer de una aplicación pequeña pero suficientemente completa para utilizarla como **proyecto de repaso de Spring Boot**, permitiendo revisar de forma práctica diferentes conceptos y observar cómo evoluciona una aplicación desde un CRUD sencillo hasta una aplicación con persistencia, Docker y seguridad.
