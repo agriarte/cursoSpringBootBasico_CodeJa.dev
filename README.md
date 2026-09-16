@@ -8,12 +8,12 @@ El proyecto contiene **dos aplicaciones Spring Boot independientes**.
 
 Ejemplos sencillos de conceptos y anotaciones de Spring:
 
-* `@Component`
-* `@Service`
-* `@Repository`
-* `@Autowired`
-* Inyección de dependencias
-* Beans
+- `@Component`
+- `@Service`
+- `@Repository`
+- `@Autowired`
+- Inyección de dependencias
+- Beans
 
 ## 2. restbasico
 
@@ -41,12 +41,12 @@ En el proyecto inicial, los datos se almacenan en memoria mediante `ArrayList`.
 
 La interfaz utiliza:
 
-* Thymeleaf
-* Bootstrap
-* JavaScript `fetch()`
-* Formularios para crear y modificar
-* Botones para editar y eliminar
-* Modal de confirmación para eliminar
+- Thymeleaf
+- Bootstrap
+- JavaScript `fetch()`
+- Formularios para crear y modificar
+- Botones para editar y eliminar
+- Modal de confirmación para eliminar
 
 ## 3. Evolución del Rest Básico
 
@@ -84,13 +84,13 @@ Posteriormente se sustituye la `ArrayList` por una base de datos **H2 en memoria
 
 Se incorporan:
 
-* `@Entity`
-* `Empleado`
-* `EmpleadoDTO`
-* `EmpleadoRepository`
-* `JpaRepository`
-* H2
-* Hibernate
+- `@Entity`
+- `Empleado`
+- `EmpleadoDTO`
+- `EmpleadoRepository`
+- `JpaRepository`
+- H2
+- Hibernate
 
 La arquitectura pasa a ser:
 
@@ -128,14 +128,14 @@ La base de datos utilizada por la aplicación es:
 empleados
 ```
 
-La conexión desde Spring Boot se configura mediante `application.properties`, indicando:
+La conexión desde Spring Boot se configura mediante los archivos de configuración de Spring, indicando:
 
-* URL JDBC
-* Puerto de PostgreSQL
-* Base de datos
-* Usuario
-* Contraseña
-* Configuración de Hibernate
+- URL JDBC
+- Puerto de PostgreSQL
+- Base de datos
+- Usuario
+- Contraseña
+- Configuración de Hibernate
 
 Se sustituye la dependencia del driver de H2 por el driver JDBC de PostgreSQL.
 
@@ -188,9 +188,9 @@ La segunda utiliza únicamente **JRE 21** para ejecutar la aplicación.
 ```text
 Maven + JDK 21
       ↓
-   Compilación
+  Compilación
       ↓
-      JAR
+     JAR
       ↓
 JRE 21 Alpine
       ↓
@@ -203,15 +203,15 @@ Docker Compose permite ejecutar conjuntamente los dos servicios:
 
 ```text
 Docker Compose
-       │
-       ├── Spring Boot
-       │      ↓
-       │   Puerto 8080
-       │
-       └── PostgreSQL
-              ↓
-           Puerto 5432
-              ↓
+      │
+      ├── Spring Boot
+      │      ↓
+      │   Puerto 8080
+      │
+      └── PostgreSQL
+             ↓
+         Puerto 5432
+             ↓
         Docker Volume
 ```
 
@@ -246,6 +246,184 @@ La aplicación web queda disponible en:
 ```text
 http://localhost:8080/web/empleados
 ```
+
+### 3.5.1. Perfiles de configuración: Eclipse y Docker
+
+Al ejecutar el proyecto existen dos posibilidades:
+
+1. Ejecutar Spring Boot directamente desde Eclipse.
+2. Ejecutar Spring Boot dentro de un contenedor Docker.
+
+En ambos casos PostgreSQL puede continuar ejecutándose en Docker, pero la URL utilizada por Spring Boot es diferente dependiendo de dónde se esté ejecutando la aplicación.
+
+Para evitar modificar manualmente `application.properties`, se utilizan **Spring Profiles**.
+
+La estructura de configuración es:
+
+```text
+src/main/resources/
+├── application.properties
+├── application-eclipse.properties
+└── application-docker.properties
+```
+
+El archivo `application.properties` contiene la configuración común de la aplicación.
+
+`application-eclipse.properties` contiene la configuración específica para ejecutar Spring Boot desde Eclipse.
+
+`application-docker.properties` contiene la configuración específica para ejecutar Spring Boot desde Docker.
+
+#### Perfil Eclipse
+
+Cuando Spring Boot se ejecuta desde Eclipse, se utiliza:
+
+```properties
+spring.datasource.url=jdbc:postgresql://localhost:5432/empleados
+```
+
+Desde Eclipse, Spring Boot se ejecuta directamente en Windows.
+
+PostgreSQL, sin embargo, continúa ejecutándose dentro de Docker y su puerto `5432` está publicado en el equipo local.
+
+Por eso Spring Boot utiliza:
+
+```text
+localhost:5432
+```
+
+Para activar este perfil desde Eclipse:
+
+1. Abrir **Run → Run Configurations...**
+2. Seleccionar la configuración de la aplicación Spring Boot.
+3. Entrar en la pestaña **Arguments**.
+4. En **Program arguments**, añadir:
+
+```text
+--spring.profiles.active=eclipse
+```
+
+5. Pulsar **Apply** y ejecutar la aplicación.
+
+Al iniciar Spring Boot debe aparecer en la consola:
+
+```text
+The following 1 profile is active: "eclipse"
+```
+
+Esto indica que Spring Boot está utilizando:
+
+```text
+application-eclipse.properties
+```
+
+y, por tanto, la conexión:
+
+```text
+jdbc:postgresql://localhost:5432/empleados
+```
+
+Para este escenario solo es necesario tener PostgreSQL levantado:
+
+```bash
+docker compose up -d postgres
+```
+
+No es necesario levantar el servicio `app` de Docker, ya que Spring Boot se está ejecutando desde Eclipse.
+
+La comunicación queda de la siguiente forma:
+
+```text
+Spring Boot
+(Eclipse / Windows)
+       │
+       │ localhost:5432
+       ▼
+PostgreSQL
+(Docker)
+```
+
+#### Perfil Docker
+
+Cuando Spring Boot se ejecuta dentro de Docker, se utiliza:
+
+```properties
+spring.datasource.url=jdbc:postgresql://postgres:5432/empleados
+```
+
+En este caso, `postgres` es el nombre del servicio PostgreSQL definido en `compose.yml`.
+
+Los dos contenedores se encuentran dentro de la red creada por Docker Compose y pueden comunicarse utilizando el nombre del servicio.
+
+El perfil `docker` se activa automáticamente desde `compose.yml`:
+
+```yaml
+app:
+  build: .
+  container_name: codeja-springboot
+
+  environment:
+    SPRING_PROFILES_ACTIVE: docker
+```
+
+Por tanto, cuando se ejecuta:
+
+```bash
+docker compose up -d
+```
+
+Spring Boot utiliza:
+
+```text
+application-docker.properties
+```
+
+y la conexión:
+
+```text
+jdbc:postgresql://postgres:5432/empleados
+```
+
+La comunicación queda de la siguiente forma:
+
+```text
+Spring Boot
+(Docker)
+    │
+    │ postgres:5432
+    ▼
+PostgreSQL
+(Docker)
+```
+
+#### Resumen de los perfiles
+
+| Entorno | Spring Boot | Perfil activo | URL PostgreSQL |
+|---|---|---|---|
+| Eclipse | Windows | `eclipse` | `localhost:5432` |
+| Docker | Contenedor | `docker` | `postgres:5432` |
+
+La idea es mantener una única configuración común y utilizar perfiles para las diferencias específicas de cada entorno.
+
+```text
+                 ┌─────────────────────────┐
+                 │ application.properties  │
+                 │   Configuración común    │
+                 └────────────┬────────────┘
+                              │
+                  ┌───────────┴───────────┐
+                  │                       │
+                  ▼                       ▼
+ application-eclipse.properties   application-docker.properties
+                  │                       │
+                  ▼                       ▼
+          localhost:5432             postgres:5432
+                  │                       │
+                  ▼                       ▼
+             PostgreSQL              PostgreSQL
+              (Docker)                (Docker)
+```
+
+De esta forma, **no es necesario modificar manualmente la URL de PostgreSQL al cambiar de entorno**. Solo se cambia el perfil activo y Spring Boot selecciona automáticamente el archivo correspondiente.
 
 ### 3.6. Spring Security
 
@@ -291,8 +469,8 @@ La configuración actual establece:
 
 De esta forma se diferencia entre **autenticación** y **autorización**:
 
-* **Autenticación:** determina quién es el usuario que ha iniciado sesión.
-* **Autorización:** determina qué operaciones puede realizar ese usuario según sus roles.
+- **Autenticación:** determina quién es el usuario que ha iniciado sesión.
+- **Autorización:** determina qué operaciones puede realizar ese usuario según sus roles.
 
 Por ejemplo, un usuario con `ROLE_USER` puede consultar los empleados, pero no puede crear, modificar o eliminar empleados.
 
@@ -371,17 +549,17 @@ La arquitectura actual del proyecto es:
                               ↓
 Navegador ───────────→ SecurityFilterChain
                               ↓
-                          Controller
+                           Controller
                               ↓
-                           Service
+                            Service
                               ↓
-                         Repository
+                          Repository
                               ↓
-                       JPA / Hibernate
+                        JPA / Hibernate
                               ↓
-                         PostgreSQL
+                          PostgreSQL
                               ↓
-                       Docker Volume
+                        Docker Volume
 ```
 
 Spring Security se encuentra delante de los Controllers y actúa como filtro de las peticiones HTTP.
@@ -392,7 +570,33 @@ La autenticación se realiza mediante **form login** y la autorización mediante
 
 La interfaz web utiliza Thymeleaf junto con `thymeleaf-extras-springsecurity6` para adaptar la información mostrada al usuario autenticado.
 
-Spring Boot y PostgreSQL se ejecutan actualmente en contenedores independientes gestionados mediante Docker Compose.
+Spring Boot y PostgreSQL pueden ejecutarse actualmente en contenedores independientes gestionados mediante Docker Compose.
+
+También es posible ejecutar Spring Boot directamente desde Eclipse mientras PostgreSQL continúa ejecutándose en Docker.
+
+La selección entre ambos escenarios se realiza mediante Spring Profiles:
+
+```text
+Eclipse
+   ↓
+perfil eclipse
+   ↓
+localhost:5432
+   ↓
+PostgreSQL en Docker
+```
+
+o:
+
+```text
+Docker
+   ↓
+perfil docker
+   ↓
+postgres:5432
+   ↓
+PostgreSQL en Docker
+```
 
 Los datos de PostgreSQL se almacenan en un volumen Docker, por lo que los registros se mantienen aunque los contenedores se reinicien o se vuelvan a crear.
 
@@ -433,6 +637,10 @@ Docker
         ↓
 Docker Compose
         ↓
+Spring Profiles
+        ↓
+Ejecución Eclipse / Docker
+        ↓
 Spring Security
         ↓
 Form Login
@@ -444,4 +652,4 @@ Autorización de operaciones CRUD
 Integración Thymeleaf + Spring Security
 ```
 
-El objetivo del proyecto es disponer de una aplicación pequeña pero suficientemente completa para utilizarla como **proyecto de repaso de Spring Boot**, permitiendo revisar de forma práctica diferentes conceptos y observar cómo evoluciona una aplicación desde un CRUD sencillo hasta una aplicación con persistencia, Docker y seguridad.
+El objetivo del proyecto es disponer de una aplicación pequeña pero suficientemente completa para utilizarla como **proyecto de repaso de Spring Boot**, permitiendo revisar de forma práctica diferentes conceptos y observar cómo evoluciona una aplicación desde un CRUD sencillo hasta una aplicación con persistencia, Docker, diferentes entornos de ejecución y seguridad.
