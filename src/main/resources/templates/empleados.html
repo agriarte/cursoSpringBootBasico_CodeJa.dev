@@ -392,7 +392,7 @@
     </script>
 
 
-    <script>
+	<script>
 
 
         /*
@@ -447,7 +447,30 @@
 
         let idEmpleadoEliminar;
 
+        
+        
+        /*
+         * ============================================================
+         * OBTENER TOKEN CSRF
+         * ============================================================
+         *
+         * Solicita a Spring Security el token necesario para realizar
+         * peticiones que modifican datos.
+         */
+        async function obtenerCsrf() {
 
+            const response = await fetch("/csrf");
+
+            if (!response.ok) {
+
+                throw new Error(
+                    "No se pudo obtener el token CSRF"
+                );
+            }
+
+            return response.json();
+        }
+        
 
         /*
          * ==========================================================
@@ -474,8 +497,6 @@
             modal.show();
         }
 
-
-
         /*
          * ==========================================================
          * CONFIRMAR BORRADO
@@ -484,53 +505,77 @@
          * Cuando el usuario pulsa "Borrar" dentro del modal,
          * se realiza una petición DELETE mediante fetch().
          */
-
         document
             .getElementById("btnConfirmarEliminar")
-            .addEventListener("click", function() {
+            .addEventListener("click", async function() {
 
+                try {
 
-                /*
-                 * fetch()
-                 * -------
-                 *
-                 * Realiza una petición HTTP desde JavaScript.
-                 *
-                 * En este caso se envía:
-                 *
-                 *     DELETE /empleados/{id}
-                 */
-
-                fetch("/empleados/" + idEmpleadoEliminar, {
-
-                    method: "DELETE"
-
-                })
-
-
-                .then(response => {
+                    /*
+                     * ==================================================
+                     * OBTENER TOKEN CSRF
+                     * ==================================================
+                     *
+                     * Antes del DELETE obtenemos el token que Spring
+                     * Security exige para las peticiones que modifican
+                     * datos.
+                     */
+                    const csrf = await obtenerCsrf();
 
 
                     /*
+                     * ==================================================
+                     * DELETE /empleados/{id}
+                     * ==================================================
+                     *
+                     * Enviamos el token CSRF en la cabecera indicada
+                     * por Spring Security.
+                     */
+                    const response = await fetch(
+                        "/empleados/" + idEmpleadoEliminar,
+                        {
+                            method: "DELETE",
+
+                            headers: {
+                                [csrf.headerName]: csrf.token
+                            }
+                        }
+                    );
+
+
+                    /*
+                     * ==================================================
                      * 204 NO CONTENT
-                     * ----------------
+                     * ==================================================
                      *
                      * El empleado se ha eliminado correctamente.
                      */
-
                     if (response.status === 204) {
+
+                        /*
+                         * Volvemos a cargar la página de empleados
+                         * indicando que la eliminación se ha realizado.
+                         *
+                         * Al cargar /web/empleados, JavaScript detectará:
+                         *
+                         *     ?eliminado=true
+                         *
+                         * y mostrará el mensaje de confirmación.
+                         */
+                        window.location.href =
+                            "/web/empleados?eliminado=true";
+
                         return;
                     }
 
 
                     /*
+                     * ==================================================
                      * 404 NOT FOUND
-                     * ----------------
+                     * ==================================================
                      *
-                     * El empleado que se quería eliminar
-                     * no existe.
+                     * El empleado que se quería eliminar no existe.
                      */
-
                     if (response.status === 404) {
 
                         throw new Error(
@@ -540,82 +585,59 @@
 
 
                     /*
+                     * ==================================================
+                     * OTROS ERRORES
+                     * ==================================================
+                     *
                      * Cualquier otro código HTTP se trata
                      * como un error de eliminación.
                      */
-
                     throw new Error(
                         "Error al eliminar el empleado."
                     );
 
-                })
 
-
-                .then(() => {
-
-
-                    /*
-                     * Volvemos a cargar la lista añadiendo
-                     * eliminado=true a la URL.
-                     *
-                     * Al cargar la página, JavaScript mostrará
-                     * el mensaje de confirmación.
-                     */
-
-                    window.location.href =
-                        "/web/empleados?eliminado=true";
-
-                })
-
-
-                .catch(error => {
+                } catch (error) {
 
                     console.error(error);
 
 
                     /*
-                     * Obtener el modal de Bootstrap.
+                     * ==================================================
+                     * CERRAR MODAL
+                     * ==================================================
+                     *
+                     * Si se produce un error, cerramos el modal
+                     * de confirmación.
                      */
-
                     const modalElemento =
                         document.getElementById("modalEliminar");
 
-
-                    /*
-                     * Recuperar la instancia del modal
-                     * que ya está abierta.
-                     */
-
                     const modal =
                         bootstrap.Modal.getInstance(modalElemento);
-
-
-                    /*
-                     * Cerrar el modal.
-                     */
 
                     modal.hide();
 
 
                     /*
-                     * Mostrar el mensaje de error.
+                     * ==================================================
+                     * MOSTRAR ERROR
+                     * ==================================================
                      */
-
                     const mensaje =
                         document.getElementById("mensajeError");
-
 
                     mensaje.textContent =
                         error.message;
 
-
                     mensaje.classList.remove("d-none");
-
-                });
-
+                }
             });
 
+
+        
     </script>
+
 
 </body>
 

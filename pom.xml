@@ -10,7 +10,7 @@
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.codeja</groupId>
-	<artifactId>CodeJa_SpringBootBasico</artifactId>
+	<artifactId>CodeJa_SpringBootBasico_Hexagonal</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>CodeJa_SpringBootBasico</name>
 	<description />

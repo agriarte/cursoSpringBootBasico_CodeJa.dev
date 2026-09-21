@@ -3,6 +3,7 @@ package com.codeja.restbasico.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,18 +12,6 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-/*
- * Clase de configuración de Spring Security.
- *
- * Aquí definimos:
- *
- * - Qué URLs requieren autenticación.
- * - Qué operaciones requieren el rol ADMIN.
- * - Qué mecanismo de autenticación utilizamos.
- * - Los usuarios que pueden autenticarse.
- * - Cómo se codifican las contraseñas.
- */
 
 @Configuration
 public class SecurityConfig {
@@ -45,10 +34,7 @@ public class SecurityConfig {
              *
              * authenticated()
              * ----------------
-             * Comprueba que el usuario ha iniciado sesión correctamente.
-             *
-             * Cualquier usuario autenticado puede acceder,
-             * independientemente del rol que tenga.
+             * Comprueba que el usuario está autenticado.
              *
              *
              * hasRole("ADMIN")
@@ -57,24 +43,35 @@ public class SecurityConfig {
              * además, tiene el rol ADMIN.
              *
              *
-             * Por tanto:
-             *
-             * authenticated()  -> ¿Está autenticado?
-             *
-             * hasRole("ADMIN") -> ¿Está autenticado y tiene
-             *                      el rol ADMIN?
+             * Las reglas se evalúan en orden.
              */
             .authorizeHttpRequests(authorizeRequests -> {
+
+                /*
+                 * ======================================================
+                 * TOKEN CSRF
+                 * ======================================================
+                 *
+                 * GET /csrf permite obtener el token CSRF.
+                 *
+                 * Los clientes que realizan POST, PUT o DELETE
+                 * necesitan obtener primero este token.
+                 */
+                authorizeRequests
+                    .requestMatchers("/csrf")
+                    .permitAll();
+
 
                 /*
                  * ======================================================
                  * CONSULTA DE EMPLEADOS
                  * ======================================================
                  *
-                 * Las peticiones GET a /empleados y /empleados/*
-                 * requieren que el usuario esté autenticado.
+                 * Las peticiones GET requieren autenticación.
                  *
-                 * Tanto USER como ADMIN pueden consultar empleados.
+                 * USER y ADMIN pueden consultar empleados.
+                 *
+                 * Las peticiones GET no necesitan token CSRF.
                  */
                 authorizeRequests
                     .requestMatchers(
@@ -142,10 +139,7 @@ public class SecurityConfig {
                  * ======================================================
                  *
                  * Todas las URLs que comienzan por /web/
-                 * requieren que el usuario esté autenticado.
-                 *
-                 * Por tanto, un usuario que no haya iniciado sesión
-                 * será redirigido al formulario de login.
+                 * requieren autenticación.
                  */
                 authorizeRequests
                     .requestMatchers("/web/**")
@@ -157,8 +151,8 @@ public class SecurityConfig {
                  * RESTO DE PETICIONES
                  * ======================================================
                  *
-                 * Cualquier otra URL que no haya coincidido
-                 * con las reglas anteriores queda permitida.
+                 * Las peticiones que no coincidan con ninguna
+                 * regla anterior quedan permitidas.
                  */
                 authorizeRequests
                     .anyRequest()
@@ -169,20 +163,73 @@ public class SecurityConfig {
 
             /*
              * ==========================================================
+             * PROTECCIÓN CSRF
+             * ==========================================================
+             *
+             * Spring Security activa CSRF por defecto.
+             *
+             * POST, PUT y DELETE necesitan un token CSRF válido.
+             *
+             * Los clientes pueden obtenerlo mediante:
+             *
+             * GET /csrf
+             *
+             * y enviarlo posteriormente en la cabecera:
+             *
+             * X-CSRF-TOKEN
+             *
+             * Si el token falta o no corresponde a la sesión,
+             * Spring Security responde con HTTP 403.
+             */
+            .csrf(Customizer.withDefaults())
+
+
+            /*
+             * ==========================================================
              * FORMULARIO DE LOGIN
              * ==========================================================
              *
-             * Habilita la autenticación mediante un formulario de login.
+             * Habilita la autenticación mediante formulario.
              *
-             * Spring Security proporciona automáticamente una página
-             * de login en /login cuando no hemos creado una personalizada.
+             * Spring Security proporciona automáticamente
+             * la página de login en /login.
              *
-             * .permitAll() permite que cualquier usuario pueda acceder
-             * al formulario de login.
+             * defaultSuccessUrl() indica dónde ir después de
+             * un login correcto cuando no existe una petición
+             * protegida pendiente.
+             *
+             * permitAll() permite acceder al login sin autenticarse.
              */
             .formLogin(formLogin -> formLogin
+
+                .defaultSuccessUrl("/web/empleados")
+
                 .permitAll()
             )
+
+
+            /*
+             * ==========================================================
+             * BASIC AUTH
+             * ==========================================================
+             *
+             * Habilita autenticación mediante HTTP Basic.
+             *
+             * Es útil para Postman y otros clientes REST.
+             *
+             * El cliente envía:
+             *
+             * Authorization: Basic usuario:contraseña
+             *
+             * codificado en Base64.
+             *
+             * Basic Auth autentica al usuario, pero no sustituye
+             * la protección CSRF.
+             *
+             * Las peticiones POST, PUT y DELETE siguen necesitando
+             * el token X-CSRF-TOKEN.
+             */
+            .httpBasic(Customizer.withDefaults())
 
 
             /*
@@ -190,13 +237,14 @@ public class SecurityConfig {
              * LOGOUT
              * ==========================================================
              *
-             * Spring Security proporciona el endpoint POST /logout
-             * para cerrar la sesión del usuario.
+             * Spring Security proporciona el endpoint POST /logout.
              *
-             * Después de cerrar sesión, se redirige a /web/empleados.
+             * Después de cerrar sesión se redirige a:
              *
-             * Como /web/empleados requiere autenticación, Spring Security
-             * redirigirá al usuario al formulario de login.
+             * /web/empleados
+             *
+             * Como /web/empleados requiere autenticación,
+             * posteriormente se podrá mostrar el login.
              */
             .logout(logout -> logout
                 .logoutSuccessUrl("/web/empleados")
@@ -204,8 +252,7 @@ public class SecurityConfig {
 
 
         /*
-         * Construye y devuelve la cadena de filtros de seguridad
-         * que utilizará Spring Security.
+         * Construye y devuelve la cadena de filtros de seguridad.
          */
         return http.build();
     }
@@ -218,7 +265,7 @@ public class SecurityConfig {
      *
      * Define los usuarios que pueden autenticarse.
      *
-     * En este ejemplo los usuarios se almacenan EN MEMORIA.
+     * En este proyecto se almacenan EN MEMORIA.
      *
      * No se guardan en PostgreSQL.
      *
@@ -227,7 +274,6 @@ public class SecurityConfig {
      */
     @Bean
     public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-
 
         /*
          * ==========================================================
@@ -238,11 +284,9 @@ public class SecurityConfig {
          * password: password
          * rol: USER
          *
-         * Puede consultar empleados, pero no puede
-         * crear, modificar ni eliminar.
+         * Puede consultar empleados.
          *
-         * .roles("USER") hace que Spring Security asigne
-         * internamente la autoridad ROLE_USER.
+         * No puede crear, modificar ni eliminar.
          */
         UserDetails usuario = User
             .withUsername("user")
@@ -261,9 +305,6 @@ public class SecurityConfig {
          * rol: ADMIN
          *
          * Puede consultar, crear, modificar y eliminar empleados.
-         *
-         * .roles("ADMIN") hace que Spring Security asigne
-         * internamente la autoridad ROLE_ADMIN.
          */
         UserDetails admin = User
             .withUsername("admin")
@@ -273,10 +314,10 @@ public class SecurityConfig {
 
 
         /*
-         * InMemoryUserDetailsManager almacena los usuarios
+         * InMemoryUserDetailsManager almacena ambos usuarios
          * en memoria mientras la aplicación está funcionando.
          *
-         * Los usuarios se perderán al detener la aplicación.
+         * Los usuarios se pierden al detener la aplicación.
          */
         return new InMemoryUserDetailsManager(usuario, admin);
     }
@@ -287,11 +328,9 @@ public class SecurityConfig {
      * CODIFICADOR DE CONTRASEÑAS
      * ==============================================================
      *
-     * Define el mecanismo utilizado para codificar las
-     * contraseñas antes de almacenarlas.
+     * BCrypt se utiliza para codificar las contraseñas.
      *
-     * BCrypt es un algoritmo de hash diseñado específicamente
-     * para almacenar contraseñas de forma segura.
+     * Las contraseñas no se almacenan directamente en texto plano.
      */
     @Bean
     public PasswordEncoder passwordEncoder() {

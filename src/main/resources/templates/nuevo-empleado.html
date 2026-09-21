@@ -103,48 +103,108 @@
     </div>
 
 
-    <script>
+	<script>
+
+    /*
+     * ============================================================
+     * OBTENER TOKEN CSRF
+     * ============================================================
+     *
+     * Spring Security expone el token mediante:
+     *
+     *     GET /csrf
+     *
+     * El servidor devuelve un JSON parecido a:
+     *
+     * {
+     *     "headerName": "X-CSRF-TOKEN",
+     *     "parameterName": "_csrf",
+     *     "token": "..."
+     * }
+     *
+     * El token se utilizará posteriormente en las peticiones
+     * POST, PUT y DELETE.
+     */
+    async function obtenerCsrf() {
+
+        const response = await fetch("/csrf");
 
         /*
-         * ============================================================
-         * Envío del formulario
-         * ============================================================
-         *
-         * Detecta el evento submit del formulario.
-         *
-         * En lugar de realizar el envío HTML tradicional,
-         * JavaScript realizará la petición mediante fetch().
+         * Comprobamos que la petición para obtener el token
+         * se haya realizado correctamente.
          */
-        document
-            .getElementById("formEmpleado")
-            .addEventListener("submit", function(event) {
+        if (!response.ok) {
+
+            throw new Error(
+                "No se pudo obtener el token CSRF"
+            );
+        }
+
+        /*
+         * Convertimos la respuesta JSON en un objeto JavaScript.
+         */
+        return response.json();
+    }
+
+
+    /*
+     * ============================================================
+     * Envío del formulario
+     * ============================================================
+     *
+     * Detecta el evento submit del formulario.
+     *
+     * En lugar de realizar el envío HTML tradicional,
+     * JavaScript realizará la petición mediante fetch().
+     */
+    document
+        .getElementById("formEmpleado")
+        .addEventListener("submit", async function(event) {
+
+            /*
+             * Evita el comportamiento tradicional del formulario,
+             * que provocaría una recarga/navegación.
+             */
+            event.preventDefault();
+
+
+            /*
+             * ====================================================
+             * DATOS DEL EMPLEADO
+             * ====================================================
+             *
+             * Construimos el objeto JavaScript con los datos
+             * introducidos por el usuario.
+             *
+             * El ID no se incluye porque H2 lo genera
+             * automáticamente al guardar la Entity.
+             */
+            const empleado = {
+
+                nombre:
+                    document.getElementById("nombre").value
+
+            };
+
+
+            try {
 
                 /*
-                 * Evita el comportamiento tradicional del formulario,
-                 * que provocaría una recarga/navegación.
-                 */
-                event.preventDefault();
-
-
-                /*
-                 * Construimos el objeto JavaScript con los datos
-                 * introducidos por el usuario.
+                 * =================================================
+                 * OBTENER TOKEN CSRF
+                 * =================================================
                  *
-                 * El ID no se incluye porque H2 lo genera
-                 * automáticamente al guardar la Entity.
+                 * Antes de realizar el POST obtenemos el token
+                 * que Spring Security exige para las peticiones
+                 * que modifican datos.
                  */
-                const empleado = {
-
-                    nombre:
-                        document.getElementById("nombre").value
-
-                };
+                const csrf = await obtenerCsrf();
 
 
                 /*
-                 * ====================================================
+                 * =================================================
                  * POST /empleados
-                 * ====================================================
+                 * =================================================
                  *
                  * fetch() realiza la petición HTTP contra nuestra
                  * API REST.
@@ -152,16 +212,23 @@
                  * El cuerpo de la petición contiene el empleado
                  * en formato JSON.
                  */
-                fetch("/empleados", {
+                const response = await fetch("/empleados", {
 
                     method: "POST",
 
                     /*
                      * Indicamos que el cuerpo de la petición
                      * contiene datos en formato JSON.
+                     *
+                     * Además enviamos el token CSRF en la cabecera
+                     * indicada por Spring Security.
                      */
                     headers: {
-                        "Content-Type": "application/json"
+
+                        "Content-Type": "application/json",
+
+                        [csrf.headerName]: csrf.token
+
                     },
 
                     /*
@@ -176,111 +243,120 @@
                      */
                     body: JSON.stringify(empleado)
 
-                })
+                });
 
 
                 /*
-                 * Procesamos la respuesta HTTP recibida de Spring Boot.
+                 * =================================================
+                 * PROCESAR RESPUESTA
+                 * =================================================
+                 *
+                 * response.ok es true cuando el servidor devuelve
+                 * un código HTTP entre 200 y 299.
+                 *
+                 * En nuestro caso esperamos:
+                 *
+                 * 201 CREATED
                  */
-                .then(response => {
+                if (!response.ok) {
 
-                    /*
-                     * response.ok es true cuando el servidor devuelve
-                     * un código HTTP entre 200 y 299.
-                     *
-                     * En nuestro caso esperamos:
-                     *
-                     * 201 CREATED
-                     */
-                    if (!response.ok) {
-
-                        throw new Error(
-                            "Error al crear el empleado"
-                        );
-                    }
-
-                    /*
-                     * El Controller REST devuelve el EmpleadoDTO
-                     * creado en formato JSON.
-                     *
-                     * response.json() convierte ese JSON en
-                     * un objeto JavaScript.
-                     */
-                    return response.json();
-
-                })
+                    throw new Error(
+                        "Error al crear el empleado"
+                    );
+                }
 
 
                 /*
+                 * El Controller REST devuelve el EmpleadoDTO
+                 * creado en formato JSON.
+                 *
+                 * response.json() convierte ese JSON en
+                 * un objeto JavaScript.
+                 */
+                await response.json();
+
+
+                /*
+                 * =================================================
+                 * ACTUALIZAR LA INTERFAZ
+                 * =================================================
+                 *
                  * No necesitamos utilizar el objeto recibido.
                  *
                  * Solo necesitamos saber que el empleado se creó
                  * correctamente para actualizar la interfaz.
                  */
-                .then(() => {
-
-                    /*
-                     * Oculta el formulario.
-                     */
-                    document
-                        .getElementById("formEmpleado")
-                        .classList.add("d-none");
-
-                    /*
-                     * Muestra el mensaje de confirmación.
-                     */
-                    document
-                        .getElementById("mensajeExito")
-                        .classList.remove("d-none");
-
-                })
 
 
                 /*
+                 * Oculta el formulario.
+                 */
+                document
+                    .getElementById("formEmpleado")
+                    .classList.add("d-none");
+
+
+                /*
+                 * Muestra el mensaje de confirmación.
+                 */
+                document
+                    .getElementById("mensajeExito")
+                    .classList.remove("d-none");
+
+
+            } catch (error) {
+
+                /*
+                 * =================================================
+                 * ERROR
+                 * =================================================
+                 *
                  * Captura los errores producidos durante el proceso.
                  */
-                .catch(error => {
+                console.error(error);
 
-                    console.error(error);
+            }
 
-                });
+        });
 
-            });
+
+    /*
+     * ============================================================
+     * Crear otro empleado
+     * ============================================================
+     *
+     * Permite volver a utilizar el mismo formulario después
+     * de haber creado correctamente un empleado.
+     */
+    function crearOtro() {
+
+        /*
+         * Borra los valores introducidos anteriormente.
+         */
+        document
+            .getElementById("formEmpleado")
+            .reset();
 
 
         /*
-         * ============================================================
-         * Crear otro empleado
-         * ============================================================
-         *
-         * Permite volver a utilizar el mismo formulario después
-         * de haber creado correctamente un empleado.
+         * Oculta el mensaje de éxito.
          */
-        function crearOtro() {
+        document
+            .getElementById("mensajeExito")
+            .classList.add("d-none");
 
-            /*
-             * Borra los valores introducidos anteriormente.
-             */
-            document
-                .getElementById("formEmpleado")
-                .reset();
 
-            /*
-             * Oculta el mensaje de éxito.
-             */
-            document
-                .getElementById("mensajeExito")
-                .classList.add("d-none");
+        /*
+         * Vuelve a mostrar el formulario.
+         */
+        document
+            .getElementById("formEmpleado")
+            .classList.remove("d-none");
 
-            /*
-             * Vuelve a mostrar el formulario.
-             */
-            document
-                .getElementById("formEmpleado")
-                .classList.remove("d-none");
-        }
+    }
 
-    </script>
+	</script>
+
 
 </body>
 
